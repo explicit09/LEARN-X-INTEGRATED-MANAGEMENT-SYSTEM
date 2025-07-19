@@ -301,23 +301,36 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             .natural-language-input {
                 position: relative;
                 flex: 1;
+                max-width: 500px;
+                display: flex;
+                align-items: center;
+                background: rgba(255, 255, 255, 0.05);
+                border: 2px solid var(--accent-color, #007aff);
+                border-radius: 10px;
+                padding: 2px;
+                transition: all 0.2s;
+            }
+            
+            .natural-language-input:focus-within {
+                background: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+            }
+            
+            .nl-icon {
+                margin: 0 8px;
+                opacity: 0.7;
+                flex-shrink: 0;
+                color: var(--accent-color, #007aff);
             }
 
             .nl-input {
                 width: 100%;
-                padding: 10px 16px;
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-                border-radius: var(--border-radius, 7px);
+                padding: 10px;
+                background: transparent;
+                border: none;
                 color: var(--text-color, #e5e5e7);
                 font-size: 14px;
                 outline: none;
-                transition: all 0.2s;
-            }
-
-            .nl-input:focus {
-                background: rgba(255, 255, 255, 0.15);
-                border-color: var(--accent-color, #007aff);
             }
 
             .nl-input::placeholder {
@@ -326,22 +339,25 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
             .nl-hint {
                 position: absolute;
-                top: 100%;
+                top: calc(100% + 8px);
                 left: 0;
                 right: 0;
-                margin-top: 4px;
-                padding: 8px 12px;
-                background: rgba(0, 122, 255, 0.1);
-                border: 1px solid rgba(0, 122, 255, 0.3);
-                border-radius: 6px;
-                font-size: 12px;
+                padding: 12px 16px;
+                background: rgba(0, 0, 0, 0.95);
+                border: 1px solid var(--accent-color, #007aff);
+                border-radius: 8px;
+                font-size: 13px;
                 opacity: 0;
-                transition: opacity 0.2s;
+                transform: translateY(-4px);
+                transition: all 0.2s;
                 pointer-events: none;
+                z-index: 100;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             }
 
             .nl-hint.visible {
                 opacity: 1;
+                transform: translateY(0);
             }
 
             /* Multi-select Styles */
@@ -412,6 +428,43 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             
             .ai-insights-button:active {
                 transform: scale(0.95);
+            }
+            
+            /* Shortcut Indicator */
+            .shortcut-indicator {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 12px;
+                background: rgba(0, 0, 0, 0.9);
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+                border-radius: 8px;
+                font-size: 12px;
+                opacity: 0.6;
+                transition: opacity 0.2s;
+                z-index: 100;
+            }
+            
+            .shortcut-indicator:hover {
+                opacity: 1;
+            }
+            
+            .shortcut-hint {
+                color: rgba(255, 255, 255, 0.7);
+            }
+            
+            kbd {
+                display: inline-block;
+                padding: 2px 6px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 11px;
+                margin: 0 2px;
             }
             
             /* Template Panel Styles */
@@ -582,6 +635,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             { id: 'review', title: 'Review', status: 'review' },
             { id: 'done', title: 'Done', status: 'done' }
         ];
+        
+        this.columnStatus = {
+            todo: { name: 'To Do', color: '#6b7280' },
+            in_progress: { name: 'In Progress', color: '#3b82f6' },
+            review: { name: 'Review', color: '#f59e0b' },
+            done: { name: 'Done', color: '#10b981' }
+        };
 
         // Initialize new features
         this.templatePanelOpen = false;
@@ -915,8 +975,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     // Quick actions
-    quickCreateTask() {
-        this.showNaturalLanguageInput();
+    quickCreateTask(status = 'todo') {
+        const title = prompt(`Add new task to ${status}:`);
+        if (title && title.trim()) {
+            this.createTask({
+                title: title.trim(),
+                status: status,
+                priority: 'normal'
+            });
+        }
     }
 
     showNaturalLanguageInput() {
@@ -973,17 +1040,23 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     showKeyboardShortcuts() {
-        // TODO: Show modal with all keyboard shortcuts
-        console.log('Keyboard shortcuts:', {
-            'Cmd/Ctrl + K': 'Open command palette',
-            'C': 'Create new task',
-            'E': 'Edit selected task',
-            'D': 'Mark selected tasks as done',
-            'X': 'Enter selection mode',
-            'Shift + X': 'Select all tasks',
-            '?': 'Show keyboard shortcuts'
-        });
-        TaskManagementDemo.showFeatureGuide();
+        const shortcuts = [
+            { key: 'Cmd/Ctrl + K', action: 'Open command palette' },
+            { key: 'C', action: 'Create new task' },
+            { key: 'E', action: 'Edit selected task' },
+            { key: 'D', action: 'Mark task as done' },
+            { key: 'X', action: 'Toggle selection mode' },
+            { key: 'Shift + X', action: 'Select all tasks' },
+            { key: 'Arrow Keys', action: 'Navigate between tasks' },
+            { key: 'Space', action: 'Start drag (when task focused)' },
+            { key: '?', action: 'Show this help' }
+        ];
+        
+        const message = '🎮 Keyboard Shortcuts:\n\n' + 
+            shortcuts.map(s => `${s.key.padEnd(15)} → ${s.action}`).join('\n') +
+            '\n\n💡 Tip: Natural language input supports dates and priorities!';
+        
+        alert(message);
     }
 
     async createDemoTasks() {
@@ -1036,6 +1109,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 ${this.renderKeyboardHint()}
                 ${this.renderSelectionCount()}
                 ${this.renderValidationErrors()}
+                ${this.renderShortcutIndicator()}
             </div>
         `;
     }
@@ -1091,12 +1165,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     </div>
                     
                     <div class="natural-language-input">
+                        <svg class="nl-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
                         <input 
                             class="nl-input"
                             type="text"
-                            placeholder="Add task... (e.g., 'Review lab results Friday')"
+                            placeholder="Quick add: 'Fix bug for Lincoln High tomorrow!!' or press C"
                             @keyup=${this.handleNaturalLanguageSubmit}
-                            @focus=${() => this.naturalLanguageHint = 'Try: "Review lab results Friday" or "Update documentation tomorrow!!"'}
+                            @focus=${() => this.naturalLanguageHint = '✨ Try: "Onboard Westfield Academy next week" or "Fix login bug!!"'}
                             @blur=${() => this.naturalLanguageHint = ''}
                         />
                         <div class="nl-hint ${this.naturalLanguageHint ? 'visible' : ''}">
@@ -1157,6 +1235,14 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         ${column.title}
                         <span class="task-count">${tasks.length}</span>
                     </div>
+                    <button class="column-add-button" 
+                        @click=${() => this.quickCreateTask(column.status)}
+                        title="Add task to ${column.title}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
                 </div>
                 <div class="kanban-tasks column-tasks" 
                     @drop=${(e) => this.handleDrop(e, column.status)} 
@@ -1455,47 +1541,57 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     renderListView() {
-        // Reuse existing list view implementation
         return html`
             <div class="task-list-view">
                 <div class="task-list-header">
-                    <div>Task</div>
-                    <div>Status</div>
-                    <div>Priority</div>
-                    <div>Assignee</div>
-                    <div>Actions</div>
+                    <div class="list-col" style="flex: 3;">Task</div>
+                    <div class="list-col" style="flex: 1;">Status</div>
+                    <div class="list-col" style="flex: 1;">Priority</div>
+                    <div class="list-col" style="flex: 1;">Assignee</div>
+                    <div class="list-col" style="flex: 0.5;">Actions</div>
                 </div>
                 
-                ${this.tasks.map(task => html`
-                    <div class="task-list-item" @click=${(e) => this.handleTaskClick(e, task)}>
-                        <div>
-                            <div style="font-weight: 500; margin-bottom: 4px;">${task.title}</div>
-                            ${task.description ? html`
-                                <div style="font-size: 12px; opacity: 0.7;">${task.description}</div>
-                            ` : ''}
+                <div class="task-list-body">
+                    ${this.tasks.map(task => html`
+                        <div class="task-list-item" @click=${(e) => this.handleTaskClick(e, task)}>
+                            <div class="list-col" style="flex: 3;">
+                                <div class="task-title">${task.title}</div>
+                                ${task.description ? html`
+                                    <div class="task-description">${task.description}</div>
+                                ` : ''}
+                            </div>
+                            <div class="list-col" style="flex: 1;">
+                                <span class="task-status status-${task.status || 'todo'}">
+                                    ${this.columnStatus[task.status]?.name || task.status}
+                                </span>
+                            </div>
+                            <div class="list-col" style="flex: 1;">
+                                ${task.priority ? html`
+                                    <span class="task-priority priority-${task.priority}">
+                                        ${task.priority}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="list-col" style="flex: 1;">
+                                ${task.assignee_id ? html`
+                                    <div class="task-assignee">
+                                        ${task.assignee_id.charAt(0).toUpperCase()}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="list-col" style="flex: 0.5;">
+                                <button class="ai-insights-button" 
+                                    @click=${(e) => this.handleAIInsights(e, task)}
+                                    title="AI Insights">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 6v6l4 2"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <span class="task-priority priority-${task.status || 'low'}">${task.status || 'todo'}</span>
-                        </div>
-                        <div>
-                            ${task.priority ? html`
-                                <span class="task-priority priority-${task.priority}">${task.priority}</span>
-                            ` : ''}
-                        </div>
-                        <div>
-                            ${task.assignee_id ? html`
-                                <div class="task-assignee">${task.assignee_id.charAt(0).toUpperCase()}</div>
-                            ` : ''}
-                        </div>
-                        <div>
-                            <button class="action-button" title="Edit">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="m18 2 4 4-14 14H4v-4L18 2z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                `)}
+                    `)}
+                </div>
             </div>
         `;
     }
@@ -1968,6 +2064,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         ${error}
                     </div>
                 `)}
+            </div>
+        `;
+    }
+    
+    renderShortcutIndicator() {
+        return html`
+            <div class="shortcut-indicator">
+                <span class="shortcut-hint">Press <kbd>?</kbd> for keyboard shortcuts</span>
+                <span class="shortcut-hint">Press <kbd>C</kbd> to create task</span>
+                <span class="shortcut-hint">Press <kbd>${(navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl')} + K</kbd> for commands</span>
             </div>
         `;
     }

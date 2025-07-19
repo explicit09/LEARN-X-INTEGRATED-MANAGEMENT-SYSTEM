@@ -302,5 +302,38 @@ contextBridge.exposeInMainWorld('api', {
     // Listeners
     onChangeListenCaptureState: (callback) => ipcRenderer.on('change-listen-capture-state', callback),
     removeOnChangeListenCaptureState: (callback) => ipcRenderer.removeListener('change-listen-capture-state', callback)
+  },
+
+  // src/ui/lims/LimsDashboardView.js
+  lims: {
+    // Task Management
+    getTasks: (filters) => ipcRenderer.invoke('lims:getTasks', filters),
+    getTask: (taskId) => ipcRenderer.invoke('lims:getTask', taskId),
+    createTask: (taskData) => ipcRenderer.invoke('lims:createTask', taskData),
+    updateTask: (taskId, updates) => ipcRenderer.invoke('lims:updateTask', taskId, updates),
+    deleteTask: (taskId) => ipcRenderer.invoke('lims:deleteTask', taskId),
+    
+    // Project Management
+    getProjects: (filters) => ipcRenderer.invoke('lims:getProjects', filters),
+    getActiveProjectsCount: () => ipcRenderer.invoke('lims:getActiveProjectsCount'),
+    
+    // Team Management
+    getTeamMembersCount: () => ipcRenderer.invoke('lims:getTeamMembersCount'),
+    
+    // Sprint Management
+    getSprints: (projectId) => ipcRenderer.invoke('lims:getSprints', projectId),
+    createSprint: (sprintData) => ipcRenderer.invoke('lims:createSprint', sprintData),
+    
+    // Analytics
+    getTaskMetrics: (period) => ipcRenderer.invoke('lims:getTaskMetrics', period),
+    
+    // Window Management
+    closeDashboard: () => ipcRenderer.invoke('lims:closeDashboard'),
+    
+    // Listeners
+    onTasksUpdated: (callback) => ipcRenderer.on('lims:tasks-updated', callback),
+    removeOnTasksUpdated: (callback) => ipcRenderer.removeListener('lims:tasks-updated', callback),
+    onProjectsUpdated: (callback) => ipcRenderer.on('lims:projects-updated', callback),
+    removeOnProjectsUpdated: (callback) => ipcRenderer.removeListener('lims:projects-updated', callback)
   }
 });

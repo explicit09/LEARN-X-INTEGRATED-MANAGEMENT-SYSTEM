@@ -71,6 +71,7 @@ class ShortcutsService {
             nextResponse: isMac ? 'Cmd+]' : 'Ctrl+]',
             scrollUp: isMac ? 'Cmd+Shift+Up' : 'Ctrl+Shift+Up',
             scrollDown: isMac ? 'Cmd+Shift+Down' : 'Ctrl+Shift+Down',
+            toggleLIMS: isMac ? 'Cmd+Shift+G' : 'Ctrl+Shift+G',
         };
     }
 
@@ -262,6 +263,9 @@ class ShortcutsService {
                     break;
                 case 'nextResponse':
                     callback = () => sendToRenderer('navigate-next-response');
+                    break;
+                case 'toggleLIMS':
+                    callback = () => internalBridge.emit('window:requestVisibility', { name: 'lims-dashboard', visible: 'toggle' });
                     break;
             }
             

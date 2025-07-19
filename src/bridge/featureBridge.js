@@ -12,6 +12,7 @@ const askService = require('../features/ask/askService');
 const listenService = require('../features/listen/listenService');
 const permissionService = require('../features/common/services/permissionService');
 const encryptionService = require('../features/common/services/encryptionService');
+const limsService = require('../features/lims/limsService');
 
 module.exports = {
   // Renderer로부터의 요청을 수신하고 서비스로 전달
@@ -107,6 +108,20 @@ module.exports = {
         return { success: false, error: error.message };
       }
     });
+
+    // LIMS Service
+    ipcMain.handle('lims:getTasks', async (event, filters) => await limsService.getTasks(filters));
+    ipcMain.handle('lims:getTask', async (event, taskId) => await limsService.getTask(taskId));
+    ipcMain.handle('lims:createTask', async (event, taskData) => await limsService.createTask(taskData));
+    ipcMain.handle('lims:updateTask', async (event, taskId, updates) => await limsService.updateTask(taskId, updates));
+    ipcMain.handle('lims:deleteTask', async (event, taskId) => await limsService.deleteTask(taskId));
+    ipcMain.handle('lims:getProjects', async (event, filters) => await limsService.getProjects(filters));
+    ipcMain.handle('lims:getActiveProjectsCount', async () => await limsService.getActiveProjectsCount());
+    ipcMain.handle('lims:getTeamMembersCount', async () => await limsService.getTeamMembersCount());
+    ipcMain.handle('lims:getSprints', async (event, projectId) => await limsService.getSprints(projectId));
+    ipcMain.handle('lims:createSprint', async (event, sprintData) => await limsService.createSprint(sprintData));
+    ipcMain.handle('lims:getTaskMetrics', async (event, period) => await limsService.getTaskMetrics(period));
+    ipcMain.handle('lims:closeDashboard', async () => limsService.closeDashboard());
 
     // ModelStateService
     ipcMain.handle('model:validate-key', async (e, { provider, key }) => await modelStateService.handleValidateKey(provider, key));

@@ -266,6 +266,11 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
         return;
     }
 
+    // Handle toggle mode
+    if (shouldBeVisible === 'toggle') {
+        shouldBeVisible = !win.isVisible();
+    }
+
     if (name !== 'settings') {
         const isCurrentlyVisible = win.isVisible();
         if (isCurrentlyVisible === shouldBeVisible) {
@@ -345,6 +350,22 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                 win.setAlwaysOnTop(false);
             }
             restoreClicks();
+            win.hide();
+        }
+        return;
+    }
+
+    if (name === 'lims-dashboard') {
+        if (shouldBeVisible) {
+            const display = getCurrentDisplay(windowPool.get('header')) || screen.getPrimaryDisplay();
+            const { workArea } = display;
+            const centerX = workArea.x + (workArea.width - win.getBounds().width) / 2;
+            const centerY = workArea.y + (workArea.height - win.getBounds().height) / 2;
+            
+            win.setPosition(Math.round(centerX), Math.round(centerY));
+            win.show();
+            win.focus();
+        } else {
             win.hide();
         }
         return;
@@ -593,6 +614,47 @@ function createFeatureWindows(header, namesToCreate) {
                 }
                 break;
             }
+
+            case 'lims-dashboard': {
+                const limsDashboard = new BrowserWindow({
+                    ...commonChildOptions,
+                    width: 900,
+                    height: 600,
+                    minWidth: 800,
+                    minHeight: 500,
+                    modal: false,
+                    parent: undefined,
+                    alwaysOnTop: false,
+                    titleBarOverlay: false,
+                    resizable: true,
+                });
+
+                limsDashboard.setContentProtection(isContentProtectionOn);
+                limsDashboard.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+                if (process.platform === 'darwin') {
+                    limsDashboard.setWindowButtonVisibility(false);
+                }
+
+                const loadOptions = { query: { view: 'lims-dashboard' } };
+                if (!shouldUseLiquidGlass) {
+                    limsDashboard.loadFile(path.join(__dirname, '../ui/app/content.html'), loadOptions);
+                } else {
+                    loadOptions.query.glass = 'true';
+                    limsDashboard.loadFile(path.join(__dirname, '../ui/app/content.html'), loadOptions);
+                    limsDashboard.webContents.once('did-finish-load', () => {
+                        const viewId = liquidGlass.addView(limsDashboard.getNativeWindowHandle());
+                        if (viewId !== -1) {
+                            liquidGlass.unstable_setVariant(viewId, liquidGlass.GlassMaterialVariant.bubbles);
+                        }
+                    });
+                }
+
+                windowPool.set('lims-dashboard', limsDashboard);
+                if (!app.isPackaged) {
+                    limsDashboard.webContents.openDevTools({ mode: 'detach' });
+                }
+                break;
+            }
         }
     };
 
@@ -609,7 +671,7 @@ function createFeatureWindows(header, namesToCreate) {
 }
 
 function destroyFeatureWindows() {
-    const featureWindows = ['listen','ask','settings','shortcut-settings'];
+    const featureWindows = ['listen','ask','settings','shortcut-settings','lims-dashboard'];
     if (settingsHideTimer) {
         clearTimeout(settingsHideTimer);
         settingsHideTimer = null;
@@ -716,7 +778,7 @@ function createWindows() {
     setupWindowController(windowPool, layoutManager, movementManager);
 
     if (currentHeaderState === 'main') {
-        createFeatureWindows(header, ['listen', 'ask', 'settings', 'shortcut-settings']);
+        createFeatureWindows(header, ['listen', 'ask', 'settings', 'shortcut-settings', 'lims-dashboard']);
     }
 
     header.setContentProtection(isContentProtectionOn);

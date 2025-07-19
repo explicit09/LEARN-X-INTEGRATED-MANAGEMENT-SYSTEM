@@ -1,6 +1,6 @@
 import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
 import './core/LIMSModuleLoader.js';
-import './modules/TaskManagementModule.js';
+import './modules/TaskManagementModuleEnhanced.js';
 import './modules/CoreDashboardModule.js';
 
 /**
@@ -178,7 +178,7 @@ export class LimsDashboardView extends LitElement {
         // Each module manages its own content rendering
         switch (this.currentModule) {
             case 'task-management':
-                return html`<task-management-module slot="module-content"></task-management-module>`;
+                return html`<task-management-module-enhanced slot="module-content"></task-management-module-enhanced>`;
             case 'overview':
                 return html`<core-dashboard-module slot="module-content"></core-dashboard-module>`;
             case 'analytics':

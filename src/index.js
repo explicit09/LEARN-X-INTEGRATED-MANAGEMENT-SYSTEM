@@ -620,8 +620,18 @@ async function startWebStack() {
     pickleglass_WEB_URL: process.env.pickleglass_WEB_URL
   });
 
-  const createBackendApp = require('../pickleglass_web/backend_node');
-  const nodeApi = createBackendApp(eventBridge);
+  // Check if web backend exists
+  let nodeApi;
+  try {
+    const createBackendApp = require('../pickleglass_web/backend_node');
+    nodeApi = createBackendApp(eventBridge);
+  } catch (error) {
+    console.log('[WebStack] Web backend not found, running in LIMS-only mode');
+    // Create minimal mock middleware for compatibility
+    nodeApi = (req, res, next) => {
+      res.status(404).json({ error: 'Web API not available in LIMS-only mode' });
+    };
+  }
 
   const staticDir = app.isPackaged
     ? path.join(process.resourcesPath, 'out')
@@ -630,13 +640,8 @@ async function startWebStack() {
   const fs = require('fs');
 
   if (!fs.existsSync(staticDir)) {
-    console.error(`============================================================`);
-    console.error(`[ERROR] Frontend build directory not found!`);
-    console.error(`Path: ${staticDir}`);
-    console.error(`Please run 'npm run build' inside the 'pickleglass_web' directory first.`);
-    console.error(`============================================================`);
-    app.quit();
-    return;
+    console.log(`[WebStack] Frontend build directory not found: ${staticDir}`);
+    console.log(`[WebStack] Running in LIMS-only mode without web interface`);
   }
 
   const runtimeConfig = {

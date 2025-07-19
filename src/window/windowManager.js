@@ -259,7 +259,14 @@ function changeAllWindowsVisibility(windowPool, targetVisibility) {
  */
 async function handleWindowVisibilityRequest(windowPool, layoutManager, movementManager, name, shouldBeVisible) {
     console.log(`[WindowManager] Request: set '${name}' visibility to ${shouldBeVisible}`);
-    const win = windowPool.get(name);
+    let win = windowPool.get(name);
+
+    // Create LIMS dashboard on-demand if it doesn't exist
+    if (name === 'lims-dashboard' && (!win || win.isDestroyed())) {
+        console.log(`[WindowManager] Creating LIMS dashboard window on-demand`);
+        createFeatureWindows(windowPool.get('header'), 'lims-dashboard');
+        win = windowPool.get(name);
+    }
 
     if (!win || win.isDestroyed()) {
         console.warn(`[WindowManager] Window '${name}' not found or destroyed.`);

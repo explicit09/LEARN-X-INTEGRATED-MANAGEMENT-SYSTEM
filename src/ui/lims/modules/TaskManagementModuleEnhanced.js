@@ -388,6 +388,124 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 border-radius: 6px;
                 margin-bottom: 8px;
             }
+            
+            /* Template Panel Styles */
+            .template-panel-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            
+            .template-panel {
+                background: var(--panel-background, rgba(30, 30, 30, 0.95));
+                border-radius: 12px;
+                width: 90%;
+                max-width: 800px;
+                max-height: 80vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .template-panel-header {
+                padding: 20px;
+                border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .template-categories {
+                padding: 20px;
+                overflow-y: auto;
+            }
+            
+            .template-category {
+                margin-bottom: 30px;
+            }
+            
+            .template-category h4 {
+                margin-bottom: 15px;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+            }
+            
+            .template-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 15px;
+            }
+            
+            .template-card {
+                background: var(--card-background, rgba(255, 255, 255, 0.05));
+                border-radius: 8px;
+                padding: 20px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-align: center;
+            }
+            
+            .template-card:hover {
+                background: var(--hover-background, rgba(255, 255, 255, 0.1));
+                transform: translateY(-2px);
+            }
+            
+            .template-icon {
+                font-size: 32px;
+                margin-bottom: 10px;
+            }
+            
+            .template-name {
+                font-weight: 600;
+                margin-bottom: 5px;
+            }
+            
+            .template-description {
+                font-size: 12px;
+                opacity: 0.7;
+            }
+            
+            /* Validation Error Styles */
+            .validation-error {
+                background: rgba(239, 68, 68, 0.1);
+                border: 1px solid rgba(239, 68, 68, 0.3);
+                border-radius: 6px;
+                padding: 12px;
+                margin: 10px;
+                font-size: 13px;
+                color: #ef4444;
+            }
+            
+            .validation-error-icon {
+                margin-right: 8px;
+            }
+            
+            /* Template Button */
+            .template-button {
+                background: var(--accent-color, #007aff);
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: all 0.2s;
+            }
+            
+            .template-button:hover {
+                background: var(--accent-hover, #0056b3);
+                transform: translateY(-1px);
+            }
         `
     ];
 
@@ -403,7 +521,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         selectedTasks: { type: Array },
         keyboardHint: { type: String },
         naturalLanguageHint: { type: String },
-        dndKitLoaded: { type: Boolean }
+        dndKitLoaded: { type: Boolean },
+        templatePanelOpen: { type: Boolean },
+        visibleTasks: { type: Object },
+        scrollPositions: { type: Object },
+        validationErrors: { type: Object },
+        intersectionObservers: { type: Object }
     };
 
     constructor() {
@@ -435,9 +558,21 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             { id: 'done', title: 'Done', status: 'done' }
         ];
 
+        // Initialize new features
+        this.templatePanelOpen = false;
+        this.visibleTasks = {};
+        this.scrollPositions = {};
+        this.validationErrors = {};
+        this.intersectionObservers = {};
+        
         // Bind keyboard shortcuts
         this.handleKeyDown = this.handleKeyDown.bind(this);
         this.handleGlobalKeyDown = this.handleGlobalKeyDown.bind(this);
+        this.handleColumnScroll = this.handleColumnScroll.bind(this);
+        
+        // Initialize templates and workflow rules
+        this.taskTemplates = this.getTaskTemplates();
+        this.workflowRules = this.getWorkflowRules();
     }
 
     connectedCallback() {
@@ -447,6 +582,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         
         // Initialize drag and drop
         this.initializeDragAndDrop();
+        
+        // Initialize virtual scrolling after first render
+        this.updateComplete.then(() => {
+            this.initializeVirtualScrolling();
+        });
     }
 
     initializeDragAndDrop() {
@@ -481,6 +621,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             }
             
             this.setLoading(false);
+            
+            // Initialize virtual scrolling after tasks are loaded
+            this.updateComplete.then(() => {
+                this.initializeVirtualScrolling();
+            });
         } catch (error) {
             this.handleError(error, 'Loading task data');
         }
@@ -703,9 +848,30 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     async updateTaskStatus(taskId, newStatus) {
         try {
+            // Find the task
+            const task = this.tasks.find(t => t.id === taskId);
+            if (!task) {
+                throw new Error('Task not found');
+            }
+            
+            // Validate the status transition
+            const isValid = await this.validateStatusTransition(task, newStatus);
+            if (!isValid) {
+                // Show validation errors
+                this.requestUpdate();
+                setTimeout(() => {
+                    this.validationErrors = {};
+                    this.requestUpdate();
+                }, 5000);
+                return;
+            }
+            
+            // Clear any previous validation errors
+            this.validationErrors = {};
+            
             // Optimistic update
-            this.tasks = this.tasks.map(task => 
-                task.id === taskId ? { ...task, status: newStatus } : task
+            this.tasks = this.tasks.map(t => 
+                t.id === taskId ? { ...t, status: newStatus } : t
             );
 
             // Server update
@@ -837,12 +1003,14 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         return html`
             <div class="task-management-container">
                 ${this.renderCommandPalette()}
+                ${this.renderTemplatePanel()}
                 ${this.renderToolbar()}
                 <div class="task-content">
                     ${this.currentView === 'kanban' ? this.renderEnhancedKanbanView() : this.renderListView()}
                 </div>
                 ${this.renderKeyboardHint()}
                 ${this.renderSelectionCount()}
+                ${this.renderValidationErrors()}
             </div>
         `;
     }
@@ -913,6 +1081,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
                 
                 <div class="toolbar-right">
+                    <button class="template-button" @click=${() => this.templatePanelOpen = true} title="Task Templates">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="14" y="14" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
+                        </svg>
+                        Templates
+                    </button>
                     <button class="action-button" @click=${this.createDemoTasks} title="Create Demo Tasks">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 2v20M2 12h20"/>
@@ -946,24 +1123,45 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     renderEnhancedKanbanColumn(column) {
         const tasks = this.getTasksByStatus(column.status);
+        const visibleInfo = this.visibleTasks[column.status] || { start: 0, end: tasks.length };
         
         return html`
-            <div class="kanban-column" data-column="${column.id}">
+            <div class="kanban-column" data-column="${column.id}" data-status="${column.status}">
                 <div class="kanban-header">
                     <div class="column-title">
                         ${column.title}
                         <span class="task-count">${tasks.length}</span>
                     </div>
                 </div>
-                <div class="kanban-tasks" 
+                <div class="kanban-tasks column-tasks" 
                     @drop=${(e) => this.handleDrop(e, column.status)} 
                     @dragover=${(e) => this.handleDragOver(e, column.status)}
                     @dragenter=${(e) => this.handleDragEnter(e, column.status)}
                     @dragleave=${(e) => this.handleDragLeave(e, column.status)}
+                    @scroll=${this.handleColumnScroll}
                     data-column-status="${column.status}">
-                    ${tasks.map(task => this.renderDraggableTaskCard(task))}
+                    ${this.renderVirtualizedTasks(tasks, column.status, visibleInfo)}
                 </div>
             </div>
+        `;
+    }
+
+    renderVirtualizedTasks(tasks, columnStatus, visibleInfo) {
+        // For small task lists, skip virtualization
+        if (tasks.length < 50) {
+            return tasks.map(task => this.renderDraggableTaskCard(task));
+        }
+        
+        // Create placeholder for tasks before visible range
+        const beforeHeight = visibleInfo.start * 120; // Approximate task height
+        const afterHeight = (tasks.length - visibleInfo.end) * 120;
+        
+        return html`
+            ${beforeHeight > 0 ? html`<div style="height: ${beforeHeight}px;"></div>` : ''}
+            ${tasks.slice(visibleInfo.start, visibleInfo.end).map(task => 
+                this.renderDraggableTaskCard(task)
+            )}
+            ${afterHeight > 0 ? html`<div style="height: ${afterHeight}px;"></div>` : ''}
         `;
     }
 
@@ -1150,6 +1348,27 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     async updateMultipleTaskStatus(taskIds, newStatus) {
         try {
+            // Validate all transitions first
+            const tasks = this.tasks.filter(t => taskIds.includes(t.id));
+            const validationResults = await Promise.all(
+                tasks.map(task => this.validateStatusTransition(task, newStatus))
+            );
+            
+            const failedTasks = tasks.filter((task, index) => !validationResults[index]);
+            
+            if (failedTasks.length > 0) {
+                // Show validation errors for the first failed task
+                this.requestUpdate();
+                setTimeout(() => {
+                    this.validationErrors = {};
+                    this.requestUpdate();
+                }, 5000);
+                return;
+            }
+            
+            // Clear any previous validation errors
+            this.validationErrors = {};
+            
             // Optimistic updates
             this.tasks = this.tasks.map(task => 
                 taskIds.includes(task.id) ? { ...task, status: newStatus } : task
@@ -1249,6 +1468,393 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     getTasksByStatus(status) {
         return this.tasks.filter(task => task.status === status);
+    }
+
+    // Task Templates System
+    getTaskTemplates() {
+        return [
+            {
+                id: 'lab-test-protocol',
+                name: 'Lab Test Protocol',
+                category: 'Laboratory',
+                icon: '🧪',
+                description: 'Standard laboratory test procedure',
+                template: {
+                    title: 'Lab Test - [Sample ID]',
+                    description: `Test Protocol:
+1. Sample preparation
+2. Equipment calibration check
+3. Run test procedure
+4. Record results
+5. Quality control verification
+6. Generate report`,
+                    priority: 'high',
+                    status: 'todo',
+                    labels: 'lab,test,protocol',
+                    checklist: [
+                        'Sample received and logged',
+                        'Equipment calibrated',
+                        'Test completed',
+                        'Results validated',
+                        'Report generated'
+                    ]
+                }
+            },
+            {
+                id: 'equipment-calibration',
+                name: 'Equipment Calibration',
+                category: 'Maintenance',
+                icon: '🔧',
+                description: 'Routine equipment calibration task',
+                template: {
+                    title: 'Calibrate [Equipment Name]',
+                    description: 'Perform scheduled calibration as per manufacturer specifications',
+                    priority: 'medium',
+                    status: 'todo',
+                    labels: 'maintenance,calibration,equipment',
+                    checklist: [
+                        'Pre-calibration check',
+                        'Run calibration procedure',
+                        'Document results',
+                        'Update calibration certificate'
+                    ]
+                }
+            },
+            {
+                id: 'sample-processing',
+                name: 'Sample Processing',
+                category: 'Laboratory',
+                icon: '🧬',
+                description: 'Process incoming samples',
+                template: {
+                    title: 'Process Sample Batch [Batch ID]',
+                    description: 'Standard sample processing workflow',
+                    priority: 'high',
+                    status: 'todo',
+                    labels: 'sample,processing,lab'
+                }
+            },
+            {
+                id: 'quality-control',
+                name: 'Quality Control Check',
+                category: 'Quality',
+                icon: '✅',
+                description: 'QC verification procedures',
+                template: {
+                    title: 'QC Check - [Test/Equipment]',
+                    description: 'Perform quality control verification',
+                    priority: 'high',
+                    status: 'todo',
+                    labels: 'qc,quality,compliance'
+                }
+            },
+            {
+                id: 'inventory-reorder',
+                name: 'Inventory Reorder',
+                category: 'Operations',
+                icon: '📦',
+                description: 'Reorder lab supplies',
+                template: {
+                    title: 'Reorder [Supply Name]',
+                    description: 'Low inventory alert - place reorder',
+                    priority: 'medium',
+                    status: 'todo',
+                    labels: 'inventory,supplies,procurement'
+                }
+            },
+            {
+                id: 'report-generation',
+                name: 'Generate Report',
+                category: 'Documentation',
+                icon: '📊',
+                description: 'Create analysis report',
+                template: {
+                    title: 'Generate [Report Type] Report',
+                    description: 'Compile and generate comprehensive report',
+                    priority: 'medium',
+                    status: 'todo',
+                    labels: 'report,documentation,analysis'
+                }
+            }
+        ];
+    }
+
+    // Virtual Scrolling for Performance
+    initializeVirtualScrolling() {
+        // Set up intersection observers for each kanban column
+        const columns = this.shadowRoot.querySelectorAll('.kanban-column');
+        columns.forEach(column => {
+            const columnId = column.dataset.status;
+            if (this.intersectionObservers[columnId]) {
+                this.intersectionObservers[columnId].disconnect();
+            }
+            
+            const observer = new IntersectionObserver(
+                (entries) => this.handleTaskVisibility(entries, columnId),
+                {
+                    root: column.querySelector('.column-tasks'),
+                    rootMargin: '100px',
+                    threshold: 0
+                }
+            );
+            
+            this.intersectionObservers[columnId] = observer;
+            
+            // Observe all task cards in this column
+            const taskCards = column.querySelectorAll('.task-card');
+            taskCards.forEach(card => observer.observe(card));
+        });
+    }
+
+    handleTaskVisibility(entries, columnId) {
+        entries.forEach(entry => {
+            const taskId = entry.target.dataset.taskId;
+            if (!this.visibleTasks[columnId]) {
+                this.visibleTasks[columnId] = new Set();
+            }
+            
+            if (entry.isIntersecting) {
+                this.visibleTasks[columnId].add(taskId);
+                // Render full task content
+                entry.target.classList.remove('task-placeholder');
+            } else {
+                this.visibleTasks[columnId].delete(taskId);
+                // Render placeholder to maintain scroll position
+                entry.target.classList.add('task-placeholder');
+            }
+        });
+    }
+
+    handleColumnScroll(event) {
+        const column = event.target;
+        const columnId = column.closest('.kanban-column').dataset.status;
+        this.scrollPositions[columnId] = column.scrollTop;
+        
+        // Debounce scroll updates
+        clearTimeout(this._scrollTimeout);
+        this._scrollTimeout = setTimeout(() => {
+            this.updateVisibleTasks(columnId);
+        }, 100);
+    }
+
+    updateVisibleTasks(columnId) {
+        const column = this.shadowRoot.querySelector(`[data-status="${columnId}"]`);
+        if (!column) return;
+        
+        const container = column.querySelector('.column-tasks');
+        const containerRect = container.getBoundingClientRect();
+        const tasks = this.getTasksByStatus(columnId);
+        
+        // Calculate visible range with buffer
+        const bufferSize = 5;
+        const taskHeight = 120; // Approximate height
+        const scrollTop = container.scrollTop;
+        const visibleStart = Math.max(0, Math.floor(scrollTop / taskHeight) - bufferSize);
+        const visibleEnd = Math.min(
+            tasks.length,
+            Math.ceil((scrollTop + containerRect.height) / taskHeight) + bufferSize
+        );
+        
+        // Update visible tasks
+        this.visibleTasks[columnId] = {
+            start: visibleStart,
+            end: visibleEnd,
+            total: tasks.length
+        };
+        
+        this.requestUpdate();
+    }
+
+    // Workflow Validation System
+    getWorkflowRules() {
+        return {
+            // Status transition rules
+            statusTransitions: {
+                todo: ['in_progress'],
+                in_progress: ['review', 'todo'],
+                review: ['done', 'in_progress'],
+                done: ['review'] // Can only go back to review
+            },
+            
+            // LIMS-specific validation rules
+            validationRules: [
+                {
+                    id: 'lab-test-results',
+                    condition: (task, newStatus) => {
+                        // Can't mark lab test as done without results
+                        if (task.labels?.includes('lab') && 
+                            task.labels?.includes('test') && 
+                            newStatus === 'done') {
+                            return task.hasResults === true;
+                        }
+                        return true;
+                    },
+                    errorMessage: 'Lab tests cannot be completed without results attached'
+                },
+                {
+                    id: 'equipment-availability',
+                    condition: (task, newStatus) => {
+                        // Check equipment availability before starting
+                        if (task.required_equipment && newStatus === 'in_progress') {
+                            return this.checkEquipmentAvailability(task.required_equipment);
+                        }
+                        return true;
+                    },
+                    errorMessage: 'Required equipment is not available'
+                },
+                {
+                    id: 'review-approval',
+                    condition: (task, newStatus) => {
+                        // High priority tasks need review approval
+                        if (task.priority === 'high' && 
+                            task.status === 'review' && 
+                            newStatus === 'done') {
+                            return task.approved_by !== null;
+                        }
+                        return true;
+                    },
+                    errorMessage: 'High priority tasks require approval before completion'
+                },
+                {
+                    id: 'calibration-validity',
+                    condition: (task, newStatus) => {
+                        // Check calibration is current for equipment tasks
+                        if (task.labels?.includes('equipment') && 
+                            newStatus === 'in_progress') {
+                            return this.checkCalibrationStatus(task.equipment_id);
+                        }
+                        return true;
+                    },
+                    errorMessage: 'Equipment calibration has expired'
+                }
+            ],
+            
+            // Permission-based rules
+            permissionRules: {
+                'high_priority_approval': ['manager', 'senior_tech'],
+                'equipment_override': ['admin', 'lab_manager'],
+                'skip_review': ['senior_tech', 'manager']
+            }
+        };
+    }
+
+    async validateStatusTransition(task, newStatus) {
+        const rules = this.workflowRules;
+        this.validationErrors = {};
+        
+        // Check if transition is allowed
+        const allowedTransitions = rules.statusTransitions[task.status];
+        if (!allowedTransitions.includes(newStatus)) {
+            this.validationErrors.transition = `Cannot move from ${task.status} to ${newStatus}`;
+            return false;
+        }
+        
+        // Run validation rules
+        for (const rule of rules.validationRules) {
+            const isValid = await rule.condition(task, newStatus);
+            if (!isValid) {
+                this.validationErrors[rule.id] = rule.errorMessage;
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    async checkEquipmentAvailability(equipmentId) {
+        // Mock implementation - would check real equipment status
+        return Math.random() > 0.2; // 80% availability
+    }
+
+    async checkCalibrationStatus(equipmentId) {
+        // Mock implementation - would check real calibration records
+        return Math.random() > 0.1; // 90% calibrated
+    }
+
+    // Template Panel UI
+    renderTemplatePanel() {
+        if (!this.templatePanelOpen) return '';
+        
+        return html`
+            <div class="template-panel-overlay" @click=${() => this.templatePanelOpen = false}>
+                <div class="template-panel" @click=${(e) => e.stopPropagation()}>
+                    <div class="template-panel-header">
+                        <h3>Task Templates</h3>
+                        <button class="close-button" @click=${() => this.templatePanelOpen = false}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="template-categories">
+                        ${this.renderTemplateCategories()}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderTemplateCategories() {
+        const categories = {};
+        this.taskTemplates.forEach(template => {
+            if (!categories[template.category]) {
+                categories[template.category] = [];
+            }
+            categories[template.category].push(template);
+        });
+        
+        return Object.entries(categories).map(([category, templates]) => html`
+            <div class="template-category">
+                <h4>${category}</h4>
+                <div class="template-grid">
+                    ${templates.map(template => html`
+                        <div class="template-card" @click=${() => this.createFromTemplate(template)}>
+                            <div class="template-icon">${template.icon}</div>
+                            <div class="template-name">${template.name}</div>
+                            <div class="template-description">${template.description}</div>
+                        </div>
+                    `)}
+                </div>
+            </div>
+        `);
+    }
+
+    async createFromTemplate(template) {
+        const task = { ...template.template };
+        
+        // Show dialog to customize template values
+        const customTitle = prompt(`Task title:`, task.title);
+        if (!customTitle) return;
+        
+        task.title = customTitle;
+        task.created_from_template = template.id;
+        
+        try {
+            await this.limsApi.createTask(task);
+            this.templatePanelOpen = false;
+            await this.loadTasks();
+            this.showNotification(`Task created from template: ${template.name}`);
+        } catch (error) {
+            this.showNotification(`Failed to create task: ${error.message}`, 'error');
+        }
+    }
+
+    renderValidationErrors() {
+        if (!this.validationErrors || Object.keys(this.validationErrors).length === 0) {
+            return '';
+        }
+        
+        return html`
+            <div class="validation-errors">
+                ${Object.entries(this.validationErrors).map(([key, error]) => html`
+                    <div class="validation-error">
+                        <span class="validation-error-icon">⚠️</span>
+                        ${error}
+                    </div>
+                `)}
+            </div>
+        `;
     }
 }
 

@@ -389,6 +389,31 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 margin-bottom: 8px;
             }
             
+            /* AI Insights Button */
+            .ai-insights-button {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: var(--ai-button-bg, rgba(147, 51, 234, 0.1));
+                border: 1px solid var(--ai-button-border, rgba(147, 51, 234, 0.3));
+                color: var(--ai-button-color, #9333ea);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                margin-left: auto;
+            }
+            
+            .ai-insights-button:hover {
+                background: var(--ai-button-hover-bg, rgba(147, 51, 234, 0.2));
+                transform: scale(1.1);
+            }
+            
+            .ai-insights-button:active {
+                transform: scale(0.95);
+            }
+            
             /* Template Panel Styles */
             .template-panel-overlay {
                 position: fixed;
@@ -1195,6 +1220,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             ${task.assignee_id.charAt(0).toUpperCase()}
                         </div>
                     ` : ''}
+                    
+                    <button class="ai-insights-button" 
+                        @click=${(e) => this.handleAIInsights(e, task)}
+                        title="Get AI insights for this task">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         `;
@@ -1474,106 +1508,107 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     getTaskTemplates() {
         return [
             {
-                id: 'lab-test-protocol',
-                name: 'Lab Test Protocol',
-                category: 'Laboratory',
-                icon: '🧪',
-                description: 'Standard laboratory test procedure',
+                id: 'bug-fix',
+                name: 'Bug Fix',
+                category: 'Development',
+                icon: '🐛',
+                description: 'Fix reported platform bug',
                 template: {
-                    title: 'Lab Test - [Sample ID]',
-                    description: `Test Protocol:
-1. Sample preparation
-2. Equipment calibration check
-3. Run test procedure
-4. Record results
-5. Quality control verification
-6. Generate report`,
+                    title: 'Fix: [Bug Description]',
+                    description: `Bug Fix Process:
+1. Reproduce the issue
+2. Identify root cause
+3. Implement fix
+4. Test solution
+5. Deploy to staging
+6. Verify in production`,
                     priority: 'high',
                     status: 'todo',
-                    labels: 'lab,test,protocol',
+                    labels: 'bug,development,platform',
                     checklist: [
-                        'Sample received and logged',
-                        'Equipment calibrated',
-                        'Test completed',
-                        'Results validated',
-                        'Report generated'
+                        'Bug reproduced',
+                        'Root cause identified',
+                        'Fix implemented',
+                        'Tests passing',
+                        'Deployed to production'
                     ]
                 }
             },
             {
-                id: 'equipment-calibration',
-                name: 'Equipment Calibration',
-                category: 'Maintenance',
-                icon: '🔧',
-                description: 'Routine equipment calibration task',
+                id: 'client-onboarding',
+                name: 'Client Onboarding',
+                category: 'Client Success',
+                icon: '🏫',
+                description: 'Onboard new school/institution',
                 template: {
-                    title: 'Calibrate [Equipment Name]',
-                    description: 'Perform scheduled calibration as per manufacturer specifications',
-                    priority: 'medium',
+                    title: 'Onboard: [School Name]',
+                    description: 'Complete client onboarding process',
+                    priority: 'high',
                     status: 'todo',
-                    labels: 'maintenance,calibration,equipment',
+                    labels: 'client,onboarding,school',
                     checklist: [
-                        'Pre-calibration check',
-                        'Run calibration procedure',
-                        'Document results',
-                        'Update calibration certificate'
+                        'Initial meeting completed',
+                        'Account setup',
+                        'Admin training scheduled',
+                        'Student accounts created',
+                        'First AI session verified'
                     ]
                 }
             },
             {
-                id: 'sample-processing',
-                name: 'Sample Processing',
-                category: 'Laboratory',
-                icon: '🧬',
-                description: 'Process incoming samples',
+                id: 'feature-development',
+                name: 'New Feature',
+                category: 'Development',
+                icon: '✨',
+                description: 'Implement new platform feature',
                 template: {
-                    title: 'Process Sample Batch [Batch ID]',
-                    description: 'Standard sample processing workflow',
-                    priority: 'high',
-                    status: 'todo',
-                    labels: 'sample,processing,lab'
-                }
-            },
-            {
-                id: 'quality-control',
-                name: 'Quality Control Check',
-                category: 'Quality',
-                icon: '✅',
-                description: 'QC verification procedures',
-                template: {
-                    title: 'QC Check - [Test/Equipment]',
-                    description: 'Perform quality control verification',
-                    priority: 'high',
-                    status: 'todo',
-                    labels: 'qc,quality,compliance'
-                }
-            },
-            {
-                id: 'inventory-reorder',
-                name: 'Inventory Reorder',
-                category: 'Operations',
-                icon: '📦',
-                description: 'Reorder lab supplies',
-                template: {
-                    title: 'Reorder [Supply Name]',
-                    description: 'Low inventory alert - place reorder',
+                    title: 'Feature: [Feature Name]',
+                    description: 'Develop and deploy new feature',
                     priority: 'medium',
                     status: 'todo',
-                    labels: 'inventory,supplies,procurement'
+                    labels: 'feature,development,platform'
                 }
             },
             {
-                id: 'report-generation',
-                name: 'Generate Report',
-                category: 'Documentation',
-                icon: '📊',
-                description: 'Create analysis report',
+                id: 'support-ticket',
+                name: 'Support Ticket',
+                category: 'Support',
+                icon: '🎫',
+                description: 'Handle customer support request',
                 template: {
-                    title: 'Generate [Report Type] Report',
-                    description: 'Compile and generate comprehensive report',
+                    title: 'Support: [Issue Summary]',
+                    description: 'Resolve customer support ticket',
                     priority: 'medium',
                     status: 'todo',
-                    labels: 'report,documentation,analysis'
+                    labels: 'support,customer,ticket'
+                }
+            },
+            {
+                id: 'ai-improvement',
+                name: 'AI Tutor Enhancement',
+                category: 'AI/ML',
+                icon: '🤖',
+                description: 'Improve AI tutoring based on feedback',
+                template: {
+                    title: 'AI: [Enhancement Description]',
+                    description: 'Implement AI tutoring improvement based on platform feedback',
+                    priority: 'medium',
+                    status: 'todo',
+                    labels: 'ai,improvement,feedback'
+                }
+            },
+            {
+                id: 'performance-optimization',
+                name: 'Performance Fix',
+                category: 'Infrastructure',
+                icon: '⚡',
+                description: 'Optimize platform performance',
+                template: {
+                    title: 'Perf: [Area to Optimize]',
+                    description: 'Improve system performance and response times',
+                    priority: 'medium',
+                    status: 'todo',
+                    labels: 'performance,optimization,infrastructure'
                 }
             }
         ];
@@ -1679,33 +1714,36 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             // LIMS-specific validation rules
             validationRules: [
                 {
-                    id: 'lab-test-results',
+                    id: 'bug-fix-verification',
                     condition: (task, newStatus) => {
-                        // Can't mark lab test as done without results
+                        // Can't mark bug as done without verification
                         const labels = Array.isArray(task.labels) ? task.labels : [];
-                        if (labels.includes('lab') && 
-                            labels.includes('test') && 
+                        if (labels.includes('bug') && 
                             newStatus === 'done') {
-                            // Check if task has results in description or comments
-                            return task.description?.toLowerCase().includes('results') || 
+                            // Check if bug fix has been tested/verified
+                            return task.description?.toLowerCase().includes('verified') || 
+                                   task.description?.toLowerCase().includes('tested') ||
                                    task.completion_percentage === 100;
                         }
                         return true;
                     },
-                    errorMessage: 'Lab tests cannot be completed without results attached'
+                    errorMessage: 'Bug fixes must be tested and verified before marking as done'
                 },
                 {
-                    id: 'equipment-availability',
+                    id: 'client-task-priority',
                     condition: (task, newStatus) => {
-                        // Check if task mentions equipment in labels
+                        // Client tasks should be prioritized
                         const labels = Array.isArray(task.labels) ? task.labels : [];
-                        if (labels.includes('equipment') && newStatus === 'in_progress') {
-                            // For now, always allow - can be enhanced later
-                            return true;
+                        if (labels.includes('client') && 
+                            labels.includes('urgent') && 
+                            newStatus === 'todo' &&
+                            task.priority !== 'high' && 
+                            task.priority !== 'urgent') {
+                            return false;
                         }
                         return true;
                     },
-                    errorMessage: 'Required equipment is not available'
+                    errorMessage: 'Urgent client tasks must be set to high priority'
                 },
                 {
                     id: 'review-approval',
@@ -1726,18 +1764,19 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     errorMessage: 'High priority tasks require approval before completion (5 min review time)'
                 },
                 {
-                    id: 'calibration-validity',
+                    id: 'deployment-review',
                     condition: (task, newStatus) => {
-                        // Check calibration is current for equipment tasks
+                        // Feature deployments need review before done
                         const labels = Array.isArray(task.labels) ? task.labels : [];
-                        if (labels.includes('calibration') && 
-                            newStatus === 'in_progress') {
-                            // For now, always allow - can be enhanced with actual calibration tracking
-                            return true;
+                        if ((labels.includes('feature') || labels.includes('deployment')) && 
+                            task.status === 'in_progress' && 
+                            newStatus === 'done') {
+                            // Must go through review stage
+                            return false;
                         }
                         return true;
                     },
-                    errorMessage: 'Equipment calibration has expired'
+                    errorMessage: 'Features must go through review before deployment'
                 }
             ],
             
@@ -1857,6 +1896,63 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         // Use keyboard hint system for notifications
         this.showKeyboardHint(message);
         setTimeout(() => this.hideKeyboardHint(), 3000);
+    }
+    
+    async handleAIInsights(event, task) {
+        event.stopPropagation(); // Prevent task selection
+        
+        // Show loading state
+        this.showKeyboardHint('🤖 Analyzing task with AI...');
+        
+        try {
+            // Simulate AI analysis (in real implementation, this would call LEARN-X AI API)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Generate insights based on task type
+            let insights = '';
+            const labels = Array.isArray(task.labels) ? task.labels : [];
+            
+            if (labels.includes('bug')) {
+                insights = `💡 AI Insights:\n\n` +
+                    `1. Check recent deployments for changes in this area\n` +
+                    `2. Review similar issues from the past 30 days\n` +
+                    `3. Consider impact on ${Math.floor(Math.random() * 50 + 10)} active users\n` +
+                    `4. Priority: ${task.priority === 'high' ? 'Fix within 24h' : 'Schedule for next sprint'}`;
+            } else if (labels.includes('client') || labels.includes('onboarding')) {
+                insights = `💡 AI Insights:\n\n` +
+                    `1. Similar school size onboardings took avg 3-5 days\n` +
+                    `2. Prepare training materials for their use case\n` +
+                    `3. Schedule follow-up after 1 week of usage\n` +
+                    `4. Success metric: 80% student activation in week 1`;
+            } else if (labels.includes('ai') || labels.includes('performance')) {
+                insights = `💡 AI Insights:\n\n` +
+                    `1. Current response time: ${Math.random() * 5 + 3}s avg\n` +
+                    `2. Optimization could save $${Math.floor(Math.random() * 500 + 100)}/month\n` +
+                    `3. Consider caching frequent queries\n` +
+                    `4. Test with production data before deploying`;
+            } else if (labels.includes('feature')) {
+                insights = `💡 AI Insights:\n\n` +
+                    `1. ${Math.floor(Math.random() * 30 + 20)}% of users requested this\n` +
+                    `2. Estimated dev time: ${Math.floor(Math.random() * 5 + 2)} days\n` +
+                    `3. Similar features improved engagement by 15%\n` +
+                    `4. Consider A/B testing after launch`;
+            } else {
+                insights = `💡 AI Insights:\n\n` +
+                    `1. Break down into smaller subtasks\n` +
+                    `2. Identify dependencies and blockers\n` +
+                    `3. Set clear acceptance criteria\n` +
+                    `4. Allocate buffer time for testing`;
+            }
+            
+            // Show insights in an alert (in production, use a proper modal)
+            alert(insights);
+            this.hideKeyboardHint();
+            
+        } catch (error) {
+            console.error('[AI Insights] Error:', error);
+            this.showKeyboardHint('❌ AI insights unavailable');
+            setTimeout(() => this.hideKeyboardHint(), 2000);
+        }
     }
 
     renderValidationErrors() {

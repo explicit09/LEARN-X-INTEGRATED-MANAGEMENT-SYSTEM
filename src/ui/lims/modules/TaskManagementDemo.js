@@ -8,85 +8,85 @@ export class TaskManagementDemo {
         const demoTasks = [
             // Todo Column
             {
-                title: "Review lab results for Patient #1234",
-                description: "Check blood work and imaging results",
+                title: "Fix login timeout issue for Lincoln High School",
+                description: "Users getting logged out after 5 minutes of inactivity",
                 status: "todo",
                 priority: "high",
-                assignee_id: "dr-smith",
-                labels: "medical,urgent",
+                assignee_id: "john-dev",
+                labels: "bug,platform,client",
                 due_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Tomorrow
             },
             {
-                title: "Update documentation for LIMS module",
-                description: "Add API documentation and user guide",
+                title: "Onboard Westfield Academy - 500 students",
+                description: "Set up accounts and schedule admin training",
                 status: "todo",
-                priority: "medium",
-                assignee_id: "dev-team",
-                labels: "documentation,development"
+                priority: "high",
+                assignee_id: "sarah-cs",
+                labels: "client,onboarding,school"
             },
             {
-                title: "Schedule team meeting",
-                description: "Discuss Q1 roadmap and priorities",
+                title: "Implement math equation renderer improvements",
+                description: "Based on teacher feedback - LaTeX rendering issues",
                 status: "todo",
-                priority: "low",
-                assignee_id: "manager",
-                labels: "planning,meeting"
+                priority: "medium",
+                assignee_id: "mike-dev",
+                labels: "feature,ai,feedback"
             },
             
             // In Progress Column
             {
-                title: "Implement drag-and-drop functionality",
-                description: "Add professional kanban board features with @dnd-kit",
+                title: "Optimize AI response time for essay feedback",
+                description: "Current avg 8s, target <3s for better UX",
                 status: "in_progress",
                 priority: "urgent",
-                assignee_id: "dev-team",
-                labels: "feature,development",
-                completion_percentage: 75
+                assignee_id: "ai-team",
+                labels: "performance,ai,optimization",
+                completion_percentage: 60
             },
             {
-                title: "Analyze test results batch #456",
-                description: "Process and validate results from morning run",
+                title: "Debug student progress tracking issue",
+                description: "Progress not syncing properly for batch enrollments",
                 status: "in_progress",
                 priority: "high",
-                assignee_id: "lab-tech",
-                labels: "lab,analysis"
+                assignee_id: "lisa-dev",
+                labels: "bug,platform,sync"
             },
             
             // Review Column
             {
-                title: "Equipment calibration report",
-                description: "Review calibration data for all lab equipment",
-                status: "review",
-                priority: "medium",
-                assignee_id: "qa-team",
-                labels: "quality,compliance"
-            },
-            {
-                title: "New feature: Command palette",
-                description: "Code review for Cmd+K universal actions",
+                title: "New feature: Parent dashboard access",
+                description: "PR ready for review - parent portal implementation",
                 status: "review",
                 priority: "high",
                 assignee_id: "senior-dev",
                 labels: "feature,code-review"
             },
+            {
+                title: "AI prompt engineering for chemistry tutoring",
+                description: "Enhanced prompts based on teacher feedback",
+                status: "review",
+                priority: "medium",
+                assignee_id: "ai-team",
+                labels: "ai,improvement,feedback"
+            },
             
             // Done Column
             {
-                title: "Setup Supabase integration",
-                description: "Database connection and schema migration completed",
+                title: "Fixed video playback issue on tablets",
+                description: "Educational videos now work on all iPad models",
                 status: "done",
                 priority: "high",
-                assignee_id: "dev-team",
-                labels: "infrastructure,completed",
+                assignee_id: "frontend-team",
+                labels: "bug,platform,completed",
                 completion_percentage: 100
             },
             {
-                title: "Train new lab technician",
-                description: "Onboarding and LIMS training completed",
+                title: "Onboarded Riverside Elementary - 200 students",
+                description: "All accounts active, training completed",
                 status: "done",
                 priority: "medium",
-                assignee_id: "hr-team",
-                labels: "training,completed"
+                assignee_id: "cs-team",
+                labels: "client,onboarding,completed"
             }
         ];
 

@@ -10,7 +10,7 @@ class LimsService {
     async getTasks(filters = {}) {
         try {
             const tasks = await this.db.findMany('tasks', filters, {
-                orderBy: [{ column: 'created_at', order: 'desc' }],
+                orderBy: 'created_at.desc',
                 limit: 100
             });
             return tasks;
@@ -69,7 +69,7 @@ class LimsService {
     async getProjects(filters = {}) {
         try {
             const projects = await this.db.findMany('projects', filters, {
-                orderBy: [{ column: 'created_at', order: 'desc' }]
+                orderBy: 'created_at.desc'
             });
             return projects;
         } catch (error) {
@@ -106,7 +106,7 @@ class LimsService {
     async getSprints(projectId) {
         try {
             const sprints = await this.db.findMany('sprints', { project_id: projectId }, {
-                orderBy: [{ column: 'start_date', order: 'desc' }]
+                orderBy: 'start_date.desc'
             });
             return sprints;
         } catch (error) {

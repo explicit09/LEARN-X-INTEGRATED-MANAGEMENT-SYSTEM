@@ -34,6 +34,10 @@ class LimsService {
             const task = {
                 ...taskData,
                 status: taskData.status || 'todo',
+                // Convert labels from string to array if needed
+                labels: typeof taskData.labels === 'string' 
+                    ? taskData.labels.split(',').map(l => l.trim()).filter(l => l)
+                    : taskData.labels || [],
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
@@ -48,8 +52,20 @@ class LimsService {
         try {
             const updatedTask = {
                 ...updates,
+                // Convert labels from string to array if needed
+                labels: updates.labels !== undefined
+                    ? (typeof updates.labels === 'string' 
+                        ? updates.labels.split(',').map(l => l.trim()).filter(l => l)
+                        : updates.labels || [])
+                    : undefined,
                 updated_at: new Date().toISOString()
             };
+            
+            // Remove undefined values
+            Object.keys(updatedTask).forEach(key => 
+                updatedTask[key] === undefined && delete updatedTask[key]
+            );
+            
             return await this.db.update('tasks', { id: taskId }, updatedTask);
         } catch (error) {
             console.error('[LimsService] Error updating task:', error);

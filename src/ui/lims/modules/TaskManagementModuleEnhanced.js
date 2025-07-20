@@ -6,6 +6,8 @@ import { TaskSearchAndFilterIntegration } from './taskManagement/TaskSearchAndFi
 import { TaskDueDateModule } from './taskManagement/dueDate/TaskDueDateModule.js';
 import { TaskAssigneeModule } from './taskManagement/assignee/TaskAssigneeModule.js';
 import './taskManagement/assignee/TaskAssigneeModule.js';
+import './taskManagement/comments/TaskCommentsModule.js';
+import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -3485,7 +3487,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.requestUpdate();
         
         // Render edit modal in portal
-        setTimeout(() => this.renderEditModalInPortal(), 0);
+        setTimeout(() => {
+            this.renderEditModalInPortal();
+            // Emit task selected event for comments module
+            taskEventBus.emit(TASK_EVENTS.TASK_SELECTED, { taskId: task.id });
+        }, 0);
     }
 
     renderEditModalInPortal() {
@@ -3545,6 +3551,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             }
         });
         
+        // Emit task selected event after modal is rendered
+        taskEventBus.emit(TASK_EVENTS.TASK_SELECTED, { taskId: this.editingTask.id });
+        
         // Render assignee selector in the edit modal
         setTimeout(() => {
             const container = document.querySelector('#edit-assignee-container');
@@ -3569,6 +3578,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         ModalPortal.destroy(this.modalId);
         this.modalId = 'task-creation-modal';
         this.requestUpdate();
+        // Clear task selection
+        taskEventBus.emit(TASK_EVENTS.TASK_SELECTED, { taskId: null });
     }
 
     async saveTaskEdit() {
@@ -3644,9 +3655,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         return `
             <style>
                 ${this.getModalStyles()}
+                ${this.getEditModalStyles()}
             </style>
             <div class="task-edit-modal-overlay">
-                <div class="task-creation-modal">
+                <div class="task-edit-modal-container">
                     <div class="modal-header">
                         <h3 class="modal-title">Edit Task</h3>
                         <button class="modal-close-button">
@@ -3657,17 +3669,25 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </button>
                     </div>
                     
-                    <div class="modal-body">
-                        ${this.getEditModalFormContent()}
-                    </div>
-                    
-                    <div class="modal-footer">
-                        <button class="modal-button modal-button-cancel">
-                            Cancel
-                        </button>
-                        <button class="modal-button modal-button-primary">
-                            Save Changes
-                        </button>
+                    <div class="task-edit-modal-content">
+                        <div class="task-edit-main">
+                            <div class="modal-body">
+                                ${this.getEditModalFormContent()}
+                            </div>
+                            
+                            <div class="modal-footer">
+                                <button class="modal-button modal-button-cancel">
+                                    Cancel
+                                </button>
+                                <button class="modal-button modal-button-primary">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="task-edit-sidebar">
+                            <task-comments-module></task-comments-module>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3800,6 +3820,83 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     />
                 </div>
             </div>
+        `;
+    }
+
+    getEditModalStyles() {
+        return `
+            .task-edit-modal-container {
+                background: var(--modal-background, rgba(0, 0, 0, 0.95));
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+                border-radius: var(--border-radius, 10px);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                width: 90%;
+                max-width: 1200px;
+                height: 80vh;
+                max-height: 800px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .task-edit-modal-content {
+                flex: 1;
+                display: flex;
+                overflow: hidden;
+            }
+
+            .task-edit-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            }
+
+            .task-edit-main .modal-body {
+                flex: 1;
+                overflow-y: auto;
+            }
+
+            .task-edit-sidebar {
+                width: 400px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            task-comments-module {
+                flex: 1;
+                overflow: hidden;
+            }
+
+            @media (max-width: 1024px) {
+                .task-edit-modal-container {
+                    width: 95%;
+                    max-width: none;
+                }
+                
+                .task-edit-sidebar {
+                    width: 350px;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .task-edit-modal-content {
+                    flex-direction: column;
+                }
+                
+                .task-edit-main {
+                    border-right: none;
+                    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+                }
+                
+                .task-edit-sidebar {
+                    width: 100%;
+                    height: 300px;
+                }
+            }
         `;
     }
 

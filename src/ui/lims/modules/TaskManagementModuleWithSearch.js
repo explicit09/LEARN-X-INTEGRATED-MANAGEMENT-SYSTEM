@@ -139,7 +139,7 @@ export class TaskManagementModuleWithSearch extends TaskManagementModuleEnhanced
         
         // Ensure tasks are loaded first
         if (!this.tasks || this.tasks.length === 0) {
-            await this.loadTasks();
+            await this.loadModuleData();
         }
         
         // Initialize with current tasks
@@ -162,10 +162,10 @@ export class TaskManagementModuleWithSearch extends TaskManagementModuleEnhanced
     }
 
     /**
-     * Override loadTasks to update integration
+     * Override loadModuleData to update integration
      */
-    async loadTasks() {
-        await super.loadTasks();
+    async loadModuleData() {
+        await super.loadModuleData();
         if (this.integration) {
             this.integration.initialize(this.tasks);
         }

@@ -91,37 +91,55 @@ export const TASK_EVENTS = {
     // Search events
     SEARCH_QUERY_CHANGED: 'search:queryChanged',
     SEARCH_RESULTS_UPDATED: 'search:resultsUpdated',
+    SEARCH_UPDATED: 'search:updated',
     
     // Filter events
     FILTER_CHANGED: 'filter:changed',
     FILTER_RESET: 'filter:reset',
     FILTER_PRESET_SAVED: 'filter:presetSaved',
+    FILTERS_UPDATED: 'filters:updated',
+    FILTER_PRESET_SELECTED: 'filter:preset:selected',
     
     // Assignee events
     ASSIGNEE_SELECTED: 'assignee:selected',
     ASSIGNEE_REMOVED: 'assignee:removed',
     ASSIGNEES_LOADED: 'assignees:loaded',
+    ASSIGNEE_CLEARED: 'assignee:cleared',
     
     // Bulk operation events
     BULK_SELECTION_CHANGED: 'bulk:selectionChanged',
     BULK_OPERATION_EXECUTE: 'bulk:execute',
     BULK_SELECT_ALL: 'bulk:selectAll',
     BULK_DESELECT_ALL: 'bulk:deselectAll',
+    TASKS_SELECTED: 'tasks:selected',
+    CLEAR_SELECTION: 'selection:clear',
     
     // Task events
     TASK_CREATED: 'task:created',
     TASK_UPDATED: 'task:updated',
     TASK_DELETED: 'task:deleted',
+    TASKS_UPDATED: 'tasks:updated',
+    TASKS_DELETED: 'tasks:deleted',
     TASKS_REFRESHED: 'tasks:refreshed',
     TASKS_SORT_CHANGED: 'tasks:sortChanged',
+    
+    // Selection events
+    TASK_SELECTED: 'task:selected',
+    
+    // Comment events
+    COMMENT_ADDED: 'comment:added',
+    COMMENT_UPDATED: 'comment:updated',
+    COMMENT_DELETED: 'comment:deleted',
     
     // Due date events
     DUE_DATE_SET: 'dueDate:set',
     DUE_DATE_CLEARED: 'dueDate:cleared',
+    DUE_DATE_UPDATED: 'duedate:updated',
     OVERDUE_TASKS_FOUND: 'dueDate:overdue',
     
     // UI events
     VIEW_CHANGED: 'ui:viewChanged',
     MODAL_OPENED: 'ui:modalOpened',
-    MODAL_CLOSED: 'ui:modalClosed'
+    MODAL_CLOSED: 'ui:modalClosed',
+    SHOW_MESSAGE: 'ui:show:message'
 };

@@ -133,9 +133,14 @@ export class TaskManagementModuleWithSearch extends TaskManagementModuleEnhanced
     /**
      * Initialize the modular integration
      */
-    initializeIntegration() {
+    async initializeIntegration() {
         // Create integration instance
         this.integration = createTaskManagementIntegration(this);
+        
+        // Ensure tasks are loaded first
+        if (!this.tasks || this.tasks.length === 0) {
+            await this.loadTasks();
+        }
         
         // Initialize with current tasks
         this.integration.initialize(this.tasks);
@@ -204,8 +209,8 @@ export class TaskManagementModuleWithSearch extends TaskManagementModuleEnhanced
      * Override render to add search and filter UI
      */
     render() {
-        // Use filtered tasks for display
-        const tasksToDisplay = this.displayedTasks.length > 0 || this.hasActiveFilters 
+        // Use filtered tasks for display, default to all tasks if no filters
+        const tasksToDisplay = this.hasActiveFilters 
             ? this.displayedTasks 
             : this.tasks;
 

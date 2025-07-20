@@ -2,6 +2,7 @@ import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { LIMSModule } from '../core/LIMSModule.js';
 import { TaskManagementDemo } from './TaskManagementDemo.js';
 import { ModalPortal } from '../utils/modalPortal.js';
+import { TaskSearchAndFilterIntegration } from './taskManagement/TaskSearchAndFilterIntegration.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -1350,6 +1351,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         // Create shortcut indicator at document level
         this.createShortcutIndicator();
         
+        // Initialize search and filter integration
+        TaskSearchAndFilterIntegration.initialize(this);
+        
         // Initialize module data
         this.loadModuleData().catch(error => {
             console.error('[TaskManagementModuleEnhanced] Error loading module data:', error);
@@ -1464,6 +1468,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 this.projects = projects || [];
                 
                 console.log(`[loadModuleData] Loaded ${this.tasks.length} tasks and ${this.projects.length} projects`);
+                
+                // Update search/filter integration with new tasks
+                if (TaskSearchAndFilterIntegration.integration) {
+                    TaskSearchAndFilterIntegration.integration.initialize(this.tasks);
+                }
             } else {
                 console.error('[loadModuleData] API not available');
                 this.tasks = [];
@@ -2483,13 +2492,19 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     // Render methods
     renderModuleContent() {
+        // Get filtered tasks if integration is active
+        const displayTasks = TaskSearchAndFilterIntegration.hasActiveFilters() 
+            ? TaskSearchAndFilterIntegration.getFilteredTasks(this.tasks)
+            : this.tasks;
+            
         return html`
             <div class="task-management-container">
                 ${this.renderCommandPalette()}
                 ${this.renderTemplatePanel()}
+                ${TaskSearchAndFilterIntegration.renderSearchAndFilters()}
                 ${this.renderToolbar()}
                 <div class="task-content">
-                    ${this.currentView === 'kanban' ? this.renderEnhancedKanbanView() : this.renderListView()}
+                    ${this.currentView === 'kanban' ? this.renderEnhancedKanbanView(displayTasks) : this.renderListView(displayTasks)}
                 </div>
                 ${this.renderKeyboardHint()}
                 ${this.renderSelectionCount()}
@@ -2600,16 +2615,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         `;
     }
 
-    renderEnhancedKanbanView() {
+    renderEnhancedKanbanView(tasksToDisplay = this.tasks) {
         return html`
             <div class="kanban-board" @dragover=${this.handleDragOver}>
-                ${this.kanbanColumns.map(column => this.renderEnhancedKanbanColumn(column))}
+                ${this.kanbanColumns.map(column => this.renderEnhancedKanbanColumn(column, tasksToDisplay))}
             </div>
         `;
     }
 
-    renderEnhancedKanbanColumn(column) {
-        const tasks = this.getTasksByStatus(column.status);
+    renderEnhancedKanbanColumn(column, tasksToDisplay = this.tasks) {
+        const tasks = this.getTasksByStatus(column.status, tasksToDisplay);
         const visibleInfo = this.visibleTasks[column.status] || { start: 0, end: tasks.length };
         
         return html`
@@ -3241,7 +3256,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         `;
     }
 
-    renderListView() {
+    renderListView(tasksToDisplay = this.tasks) {
         return html`
             <div class="task-list-view">
                 <div class="task-list-header">
@@ -3253,7 +3268,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
                 
                 <div class="task-list-body">
-                    ${this.tasks.map(task => html`
+                    ${tasksToDisplay.map(task => html`
                         <div class="task-list-item" @click=${(e) => this.handleTaskClick(e, task)}>
                             <div class="list-col" style="flex: 3;">
                                 <div class="task-title">${task.title}</div>
@@ -3297,8 +3312,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         `;
     }
 
-    getTasksByStatus(status) {
-        return this.tasks.filter(task => task.status === status);
+    getTasksByStatus(status, tasksToFilter = this.tasks) {
+        return tasksToFilter.filter(task => task.status === status);
     }
 
     // Task Templates System

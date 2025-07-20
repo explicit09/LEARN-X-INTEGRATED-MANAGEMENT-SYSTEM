@@ -443,6 +443,12 @@ export class TaskFilterModule extends LitElement {
                     assignee: 'me'
                 };
                 break;
+            case 'unassigned':
+                this.activeFilters = {
+                    ...this.activeFilters,
+                    assignee: 'unassigned'
+                };
+                break;
             case 'due-soon':
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
@@ -688,6 +694,7 @@ export class TaskFilterModule extends LitElement {
                 <div class="filter-section-title">Quick Filters</div>
                 <div class="filter-presets">
                     <div class="preset-chip" @click=${() => this.applyPreset('my-tasks')}>My Tasks</div>
+                    <div class="preset-chip" @click=${() => this.applyPreset('unassigned')}>Unassigned</div>
                     <div class="preset-chip" @click=${() => this.applyPreset('due-soon')}>Due Soon</div>
                     <div class="preset-chip" @click=${() => this.applyPreset('high-priority')}>High Priority</div>
                     <div class="preset-chip" @click=${() => this.applyPreset('active')}>Active</div>

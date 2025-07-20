@@ -111,10 +111,11 @@ export class TaskManagementIntegration {
             }
             if (searchFilters.assignee) {
                 if (searchFilters.assignee === 'me') {
-                    // TODO: Get current user ID from auth
-                    filtered = filtered.filter(task => task.assignee === 'current-user');
+                    // For now, show all assigned tasks (not unassigned)
+                    // TODO: Get current user ID from auth and filter by actual user
+                    filtered = filtered.filter(task => task.assignee_id);
                 } else {
-                    filtered = filtered.filter(task => task.assignee === searchFilters.assignee);
+                    filtered = filtered.filter(task => task.assignee_id === searchFilters.assignee);
                 }
             }
             if (searchFilters.due) {
@@ -147,12 +148,13 @@ export class TaskManagementIntegration {
 
         if (this.activeFilters.assignee) {
             if (this.activeFilters.assignee === 'me') {
-                // TODO: Get current user ID from auth
-                filtered = filtered.filter(task => task.assignee === 'current-user');
+                // For now, show all assigned tasks (not unassigned)
+                // TODO: Get current user ID from auth and filter by actual user
+                filtered = filtered.filter(task => task.assignee_id);
             } else if (this.activeFilters.assignee === 'unassigned') {
-                filtered = filtered.filter(task => !task.assignee);
+                filtered = filtered.filter(task => !task.assignee_id);
             } else {
-                filtered = filtered.filter(task => task.assignee === this.activeFilters.assignee);
+                filtered = filtered.filter(task => task.assignee_id === this.activeFilters.assignee);
             }
         }
 

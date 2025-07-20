@@ -1,6 +1,7 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { LIMSModule } from '../core/LIMSModule.js';
 import { TaskManagementDemo } from './TaskManagementDemo.js';
+import { ModalPortal } from '../utils/modalPortal.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -15,12 +16,23 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     static styles = [
         LIMSModule.styles,
         css`
+            /* No need to override parent overflow with portal approach */
+            
             /* Previous styles maintained */
             .task-management-container {
                 display: flex;
                 flex-direction: column;
                 height: 100%;
                 gap: 16px;
+                position: relative; /* Create stacking context */
+            }
+            
+            .task-content {
+                flex: 1;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
             }
 
             .task-toolbar {
@@ -80,11 +92,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             /* Enhanced Kanban Board Styles for Drag-and-Drop */
             .kanban-board {
                 display: flex;
-                height: 100%;
+                flex: 1;
                 gap: 16px;
                 padding: 16px;
                 overflow-x: auto;
+                overflow-y: hidden;
                 position: relative;
+                min-height: 0;
             }
 
             .kanban-column {
@@ -94,8 +108,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
                 display: flex;
                 flex-direction: column;
-                height: fit-content;
-                max-height: calc(100vh - 200px);
+                height: 100%;
+                max-height: 100%;
                 transition: all 0.2s;
             }
 
@@ -111,6 +125,32 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 align-items: center;
                 justify-content: space-between;
                 user-select: none;
+            }
+
+            .column-add-button {
+                width: 28px;
+                height: 28px;
+                border-radius: 6px;
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+                background: transparent;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+                flex-shrink: 0;
+                margin-left: 8px;
+            }
+            
+            .column-add-button:hover {
+                background: var(--accent-color, #007aff);
+                color: white;
+                border-color: var(--accent-color, #007aff);
+            }
+            
+            .column-add-button:active {
+                transform: scale(0.95);
             }
 
             .column-title {
@@ -158,6 +198,31 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             }
+            
+            .task-card:hover::after {
+                content: "Double-click to edit";
+                position: absolute;
+                bottom: -20px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 11px;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+                white-space: nowrap;
+                pointer-events: none;
+                opacity: 0;
+                animation: fadeInUp 0.3s ease-out 0.5s forwards;
+            }
+            
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(5px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
 
             .task-card.dragging {
                 opacity: 0.5;
@@ -171,6 +236,73 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
                 background: rgba(0, 0, 0, 0.9);
                 border-color: var(--accent-color, #007aff);
+            }
+            
+            .task-actions {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                display: flex;
+                gap: 4px;
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+            
+            .task-card:hover .task-actions {
+                opacity: 1;
+            }
+            
+            .task-action-button {
+                width: 28px;
+                height: 28px;
+                border-radius: 4px;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+            }
+            
+            .task-edit-button {
+                background: rgba(0, 122, 255, 0.2);
+                color: #007aff;
+            }
+            
+            .task-edit-button:hover {
+                background: rgba(0, 122, 255, 0.3);
+                transform: scale(1.1);
+            }
+            
+            .task-delete-button {
+                background: rgba(255, 59, 48, 0.2);
+                color: #ff3b30;
+            }
+            
+            .task-delete-button:hover {
+                background: rgba(255, 59, 48, 0.3);
+                transform: scale(1.1);
+            }
+            
+            /* Task content styles */
+            .task-title {
+                font-weight: 600;
+                margin-bottom: 6px;
+                color: var(--accent-color, #007aff);
+                font-size: 14px;
+                line-height: 1.3;
+            }
+            
+            .task-description {
+                font-size: 13px;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                margin-bottom: 12px;
+                line-height: 1.4;
+                /* Limit to 2 lines in kanban view */
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
             }
 
             /* Drop Indicator */
@@ -281,20 +413,27 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             /* Keyboard Shortcut Indicator */
             .keyboard-hint {
                 position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: rgba(0, 0, 0, 0.9);
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.95);
                 border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 12px;
+                border-radius: 8px;
+                padding: 12px 20px;
+                font-size: 13px;
                 opacity: 0;
-                transition: opacity 0.2s;
+                transition: all 0.3s;
                 pointer-events: none;
+                z-index: 2000; /* Higher than shortcut indicator */
+                backdrop-filter: blur(10px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                max-width: 400px;
+                text-align: center;
             }
 
             .keyboard-hint.visible {
                 opacity: 1;
+                transform: translateX(-50%) translateY(-4px);
             }
 
             /* Natural Language Input */
@@ -432,24 +571,34 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             
             /* Shortcut Indicator */
             .shortcut-indicator {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
+                position: fixed !important;
+                bottom: 24px !important;
+                right: 24px !important;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
-                padding: 12px;
-                background: rgba(0, 0, 0, 0.9);
+                padding: 12px 16px;
+                background: rgba(0, 0, 0, 0.95);
                 border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
                 border-radius: 8px;
                 font-size: 12px;
-                opacity: 0.6;
-                transition: opacity 0.2s;
-                z-index: 100;
+                opacity: 0.7;
+                transition: all 0.2s;
+                z-index: 9999; /* Very high z-index for fullscreen mode */
+                backdrop-filter: blur(10px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                max-width: 300px;
+                pointer-events: auto; /* Ensure it's clickable */
+                /* Ensure it's positioned relative to viewport */
+                position: fixed !important;
+                transform: none !important;
+                margin: 0 !important;
             }
             
             .shortcut-indicator:hover {
                 opacity: 1;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
             }
             
             .shortcut-hint {
@@ -468,9 +617,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             }
             
             /* Template Panel Styles */
+            :host {
+                --safe-area-inset-top: env(safe-area-inset-top, 0px);
+            }
+            
             .template-panel-overlay {
                 position: fixed;
-                top: 0;
+                top: var(--safe-area-inset-top);
                 left: 0;
                 right: 0;
                 bottom: 0;
@@ -479,17 +632,21 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 align-items: center;
                 justify-content: center;
                 z-index: 1000;
+                padding: 20px;
             }
             
             .template-panel {
                 background: var(--panel-background, rgba(30, 30, 30, 0.95));
                 border-radius: 12px;
                 width: 90%;
-                max-width: 800px;
-                max-height: 80vh;
+                max-width: 900px;
+                height: 90%;
+                max-height: 700px;
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
+                position: relative;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             }
             
             .template-panel-header {
@@ -500,9 +657,54 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 align-items: center;
             }
             
+            .close-button {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+                background: transparent;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+                flex-shrink: 0;
+            }
+            
+            .close-button:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--text-color, #e5e5e7);
+            }
+            
+            .close-button:active {
+                transform: scale(0.95);
+            }
+            
             .template-categories {
                 padding: 20px;
                 overflow-y: auto;
+                flex: 1;
+                /* Add custom scrollbar */
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+            }
+            
+            .template-categories::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .template-categories::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .template-categories::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+            }
+            
+            .template-categories::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.3);
             }
             
             .template-category {
@@ -516,8 +718,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             
             .template-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                gap: 15px;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 16px;
             }
             
             .template-card {
@@ -584,6 +786,459 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 background: var(--accent-hover, #0056b3);
                 transform: translateY(-1px);
             }
+            
+            /* List View Styles */
+            .task-list-view {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.4);
+                border-radius: var(--border-radius, 7px);
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+                overflow: hidden;
+            }
+            
+            .task-list-header {
+                display: flex;
+                background: rgba(0, 0, 0, 0.6);
+                padding: 16px;
+                border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+                font-weight: 600;
+                font-size: 13px;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }
+            
+            .task-list-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 8px;
+            }
+            
+            .task-list-item {
+                display: flex;
+                background: var(--card-background, rgba(255, 255, 255, 0.05));
+                border-radius: 6px;
+                padding: 16px;
+                margin-bottom: 8px;
+                cursor: pointer;
+                transition: all 0.2s;
+                align-items: center;
+                border: 1px solid transparent;
+            }
+            
+            .task-list-item:hover {
+                background: var(--hover-background, rgba(255, 255, 255, 0.08));
+                border-color: var(--accent-color, #007aff);
+            }
+            
+            .task-list-item.selected {
+                background: var(--selected-background, rgba(0, 122, 255, 0.2));
+                border-color: var(--accent-color, #007aff);
+            }
+            
+            .list-col {
+                display: flex;
+                align-items: center;
+                padding: 0 8px;
+                min-width: 0; /* Allow text truncation */
+            }
+            
+            .list-col .task-title {
+                font-weight: 600;
+                margin-bottom: 4px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                color: var(--accent-color, #007aff);
+                font-size: 14px;
+            }
+            
+            .list-col .task-description {
+                font-size: 12px;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .task-status {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+                text-transform: capitalize;
+            }
+            
+            .status-todo {
+                background: rgba(100, 116, 139, 0.2);
+                color: #94a3b8;
+            }
+            
+            .status-in_progress {
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+            }
+            
+            .status-review {
+                background: rgba(251, 146, 60, 0.2);
+                color: #fb923c;
+            }
+            
+            .status-done {
+                background: rgba(34, 197, 94, 0.2);
+                color: #4ade80;
+            }
+            
+            .task-priority {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 500;
+                text-transform: capitalize;
+            }
+            
+            .priority-low {
+                background: rgba(34, 197, 94, 0.2);
+                color: #4ade80;
+            }
+            
+            .priority-normal {
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+            }
+            
+            .priority-high {
+                background: rgba(239, 68, 68, 0.2);
+                color: #f87171;
+            }
+            
+            /* Task Creation Modal Styles */
+            .task-creation-modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999; /* Increased z-index to ensure it's on top */
+                backdrop-filter: blur(4px);
+                /* Break out of parent constraints */
+                overflow: auto; /* Allow scrolling if needed */
+            }
+            
+            .task-creation-modal {
+                background: rgba(30, 30, 30, 0.95);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                width: 600px;
+                max-width: 90vw;
+                height: calc(90vh - 40px); /* Use viewport height minus margin */
+                max-height: calc(100vh - 40px); /* Allow full viewport usage */
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+                margin: 20px; /* Consistent margin */
+                position: relative; /* Ensure proper stacking context */
+                overflow: hidden; /* Prevent modal itself from scrolling */
+            }
+            
+            .modal-header {
+                padding: 20px 24px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex: 0 0 auto; /* Don't grow or shrink */
+                background: rgba(30, 30, 30, 0.95); /* Match modal background */
+                border-radius: 12px 12px 0 0; /* Round top corners */
+            }
+            
+            .modal-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--text-color, #e5e5e7);
+            }
+            
+            .modal-close-button {
+                background: transparent;
+                border: none;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.6));
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 6px;
+                transition: all 0.2s;
+            }
+            
+            .modal-close-button:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--text-color, #e5e5e7);
+            }
+            
+            .modal-body {
+                padding: 24px;
+                overflow-y: auto;
+                flex: 1; /* Take remaining space */
+                min-height: 0; /* Critical for flexbox scrolling */
+                /* Remove max-height since parent has fixed height */
+                /* Add scrollbar styling */
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+            }
+            
+            .modal-body::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .modal-body::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .modal-body::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+            }
+            
+            .modal-body::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+            
+            .form-group {
+                margin-bottom: 24px; /* Increased spacing */
+            }
+            
+            .form-group:last-child {
+                margin-bottom: 0;
+            }
+            
+            .form-label {
+                display: block;
+                margin-bottom: 8px;
+                font-size: 13px;
+                font-weight: 500;
+                color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .form-input, .form-textarea, .form-select {
+                width: 100%;
+                padding: 10px 12px;
+                background: rgba(0, 0, 0, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                color: var(--text-color, #e5e5e7);
+                font-size: 14px;
+                transition: all 0.2s;
+                outline: none;
+            }
+            
+            .form-input:focus, .form-textarea:focus, .form-select:focus {
+                border-color: var(--accent-color, #007aff);
+                background: rgba(0, 0, 0, 0.6);
+                box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+            }
+            
+            .form-textarea {
+                resize: vertical;
+                min-height: 80px;
+            }
+            
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px; /* Increased gap */
+                margin-bottom: 0; /* Remove double margin since form-group already has margin */
+            }
+            
+            .form-row .form-group {
+                margin-bottom: 0; /* Prevent double spacing in rows */
+            }
+            
+            .priority-selector {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+            }
+            
+            .priority-option {
+                padding: 8px 12px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                background: rgba(0, 0, 0, 0.4);
+                cursor: pointer;
+                text-align: center;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s;
+            }
+            
+            .priority-option:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .priority-option.selected {
+                border-color: var(--accent-color, #007aff);
+                background: rgba(0, 122, 255, 0.2);
+            }
+            
+            .priority-option.urgent {
+                color: #ef4444;
+            }
+            
+            .priority-option.high {
+                color: #f87171;
+            }
+            
+            .priority-option.medium {
+                color: #fbbf24;
+            }
+            
+            .priority-option.low {
+                color: #4ade80;
+            }
+            
+            .labels-input {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 8px;
+                background: rgba(0, 0, 0, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                min-height: 42px;
+            }
+            
+            .label-tag {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .label-remove {
+                cursor: pointer;
+                opacity: 0.6;
+                transition: opacity 0.2s;
+            }
+            
+            .label-remove:hover {
+                opacity: 1;
+            }
+            
+            .label-input-field {
+                border: none;
+                background: transparent;
+                outline: none;
+                color: var(--text-color, #e5e5e7);
+                flex: 1;
+                min-width: 100px;
+            }
+            
+            .modal-footer {
+                padding: 16px 24px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                display: flex;
+                justify-content: flex-end;
+                gap: 12px;
+                flex: 0 0 auto; /* Don't grow or shrink */
+                background: rgba(30, 30, 30, 0.98); /* Solid background matching modal */
+                border-radius: 0 0 12px 12px; /* Round bottom corners */
+            }
+            
+            .modal-button {
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: 1px solid transparent;
+            }
+            
+            .modal-button-cancel {
+                background: transparent;
+                border-color: rgba(255, 255, 255, 0.2);
+                color: var(--text-color, #e5e5e7);
+            }
+            
+            .modal-button-cancel:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .modal-button-primary {
+                background: var(--accent-color, #007aff);
+                color: white;
+            }
+            
+            .modal-button-primary:hover {
+                background: #0056b3;
+            }
+            
+            .modal-button-primary:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            
+            .task-assignee {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--accent-color, #007aff);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                font-size: 14px;
+            }
+            
+            /* Responsive Design */
+            @media (max-width: 768px) {
+                .form-row {
+                    grid-template-columns: 1fr;
+                }
+                
+                .priority-selector {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+                
+                .modal-content {
+                    width: 95%;
+                    max-width: none;
+                    margin: 10px;
+                }
+                
+                .template-panel {
+                    width: 95%;
+                    height: 95%;
+                }
+                
+                .template-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                }
+                
+                .kanban-board {
+                    flex-direction: column;
+                    height: auto;
+                }
+                
+                .kanban-column {
+                    width: 100%;
+                    max-width: none;
+                    height: 400px;
+                }
+            }
         `
     ];
 
@@ -604,7 +1259,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         visibleTasks: { type: Object },
         scrollPositions: { type: Object },
         validationErrors: { type: Object },
-        intersectionObservers: { type: Object }
+        intersectionObservers: { type: Object },
+        showQuickAddInput: { type: Boolean },
+        quickAddStatus: { type: String },
+        showTaskCreationModal: { type: Boolean },
+        modalId: { type: String },
+        newTaskData: { type: Object },
+        isCreatingTask: { type: Boolean },
+        editingTask: { type: Object },
+        showEditModal: { type: Boolean }
     };
 
     constructor() {
@@ -649,11 +1312,27 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.scrollPositions = {};
         this.validationErrors = {};
         this.intersectionObservers = {};
+        this.showQuickAddInput = false;
+        this.quickAddStatus = 'todo';
+        this.showTaskCreationModal = false;
+        this.modalId = 'task-creation-modal';
+        this.newTaskData = this.getEmptyTaskData();
+        this.isCreatingTask = false;
+        this.editingTask = null;
+        this.showEditModal = false;
         
         // Bind keyboard shortcuts
         this.handleKeyDown = this.handleKeyDown.bind(this);
         this.handleGlobalKeyDown = this.handleGlobalKeyDown.bind(this);
         this.handleColumnScroll = this.handleColumnScroll.bind(this);
+        
+        // Bind modal methods
+        this.updateNewTaskData = this.updateNewTaskData.bind(this);
+        this.closeTaskModal = this.closeTaskModal.bind(this);
+        this.createTaskFromModal = this.createTaskFromModal.bind(this);
+        this.focusLabelInput = this.focusLabelInput.bind(this);
+        this.handleLabelKeydown = this.handleLabelKeydown.bind(this);
+        this.removeLabel = this.removeLabel.bind(this);
         
         // Initialize templates and workflow rules
         this.taskTemplates = this.getTaskTemplates();
@@ -668,10 +1347,84 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         // Initialize drag and drop
         this.initializeDragAndDrop();
         
+        // Create shortcut indicator at document level
+        this.createShortcutIndicator();
+        
+        // Initialize module data
+        this.loadModuleData().catch(error => {
+            console.error('[TaskManagementModuleEnhanced] Error loading module data:', error);
+            this.setError('Failed to load tasks: ' + error.message);
+        });
+        
         // Initialize virtual scrolling after first render
         this.updateComplete.then(() => {
             this.initializeVirtualScrolling();
         });
+    }
+
+    createShortcutIndicator() {
+        // Remove any existing indicator
+        const existing = document.getElementById('lims-shortcut-indicator');
+        if (existing) {
+            existing.remove();
+        }
+
+        // Create indicator at document level
+        const indicator = document.createElement('div');
+        indicator.id = 'lims-shortcut-indicator';
+        indicator.innerHTML = `
+            <style>
+                #lims-shortcut-indicator {
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    padding: 12px 16px;
+                    background: rgba(0, 0, 0, 0.95);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                    color: #e5e5e7;
+                    opacity: 0.7;
+                    transition: all 0.2s;
+                    z-index: 999999;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    max-width: 300px;
+                }
+                
+                #lims-shortcut-indicator:hover {
+                    opacity: 1;
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+                }
+                
+                #lims-shortcut-indicator .shortcut-hint {
+                    color: rgba(255, 255, 255, 0.7);
+                    line-height: 1.5;
+                }
+                
+                #lims-shortcut-indicator kbd {
+                    display: inline-block;
+                    padding: 2px 6px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 11px;
+                    margin: 0 2px;
+                }
+            </style>
+            <span class="shortcut-hint">Press <kbd>?</kbd> for keyboard shortcuts</span>
+            <span class="shortcut-hint">Press <kbd>C</kbd> to create task</span>
+            <span class="shortcut-hint">Press <kbd>${navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl'} + K</kbd> for commands</span>
+            <span class="shortcut-hint">Press <kbd>${navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl'} + Shift + F</kbd> for fullscreen</span>
+        `;
+        
+        document.body.appendChild(indicator);
     }
 
     initializeDragAndDrop() {
@@ -687,13 +1440,21 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     disconnectedCallback() {
         super.disconnectedCallback();
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
+        
+        // Remove shortcut indicator
+        const indicator = document.getElementById('lims-shortcut-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
     }
 
     async loadModuleData() {
+        console.log('[loadModuleData] Starting...');
         try {
             this.setLoading(true, 'Loading enhanced task management...');
             
-            if (window.api) {
+            if (window.api && window.api.lims) {
+                console.log('[loadModuleData] Fetching tasks and projects...');
                 const [tasks, projects] = await Promise.all([
                     window.api.lims.getTasks(),
                     window.api.lims.getProjects()
@@ -702,7 +1463,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 this.tasks = tasks || [];
                 this.projects = projects || [];
                 
-                console.log(`[TaskManagement] Loaded ${this.tasks.length} tasks and ${this.projects.length} projects`);
+                console.log(`[loadModuleData] Loaded ${this.tasks.length} tasks and ${this.projects.length} projects`);
+            } else {
+                console.error('[loadModuleData] API not available');
+                this.tasks = [];
+                this.projects = [];
             }
             
             this.setLoading(false);
@@ -712,6 +1477,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 this.initializeVirtualScrolling();
             });
         } catch (error) {
+            console.error('[loadModuleData] Error:', error);
             this.handleError(error, 'Loading task data');
         }
     }
@@ -725,8 +1491,17 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             return;
         }
 
-        // Only handle shortcuts when not typing in an input
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        // Check if user is typing in any input field
+        const activeElement = this.shadowRoot?.activeElement || document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.contentEditable === 'true' ||
+            activeElement.closest('input, textarea, [contenteditable="true"]')
+        );
+        
+        // Also check if task creation modal is open
+        if (isTyping || this.showTaskCreationModal) {
             return;
         }
 
@@ -835,7 +1610,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         const task = {
             title: input,
             status: 'todo',
-            priority: 'normal',
+            priority: 'medium',
             due_date: null
         };
 
@@ -976,14 +1751,37 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     // Quick actions
     quickCreateTask(status = 'todo') {
-        const title = prompt(`Add new task to ${status}:`);
-        if (title && title.trim()) {
-            this.createTask({
-                title: title.trim(),
-                status: status,
-                priority: 'normal'
-            });
-        }
+        console.log('[quickCreateTask] Called with status:', status);
+        
+        // Open task creation modal with the selected status
+        this.newTaskData = {
+            ...this.getEmptyTaskData(),
+            status: status
+        };
+        this.showTaskCreationModal = true;
+        
+        // Force update to ensure modal shows
+        this.requestUpdate();
+        
+        // Render modal in portal after update
+        setTimeout(() => this.renderModalInPortal(), 0);
+        
+        // Log current state
+        console.log('[quickCreateTask] Modal should be visible:', this.showTaskCreationModal);
+        console.log('[quickCreateTask] Task data:', this.newTaskData);
+    }
+    
+    getEmptyTaskData() {
+        return {
+            title: '',
+            description: '',
+            status: 'todo',
+            priority: 'medium',
+            due_date: null,
+            assignee_id: null,
+            project_id: this.projects[0]?.id || null,
+            labels: [] // Always return empty array
+        };
     }
 
     showNaturalLanguageInput() {
@@ -995,12 +1793,569 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             }
         });
     }
+    
+    // Task Creation Modal Methods
+    updateNewTaskData(field, value) {
+        this.newTaskData = {
+            ...this.newTaskData,
+            [field]: value
+        };
+        this.requestUpdate();
+    }
+    
+    closeTaskModal() {
+        this.showTaskCreationModal = false;
+        this.newTaskData = this.getEmptyTaskData();
+        ModalPortal.destroy(this.modalId);
+        this.requestUpdate();
+    }
+
+    renderModalInPortal() {
+        if (!this.showTaskCreationModal) {
+            ModalPortal.destroy(this.modalId);
+            return;
+        }
+
+        // Get modal HTML content
+        const modalContent = this.getModalContent();
+        
+        // Create modal in portal
+        ModalPortal.create(this.modalId, modalContent);
+        
+        // Attach event listeners
+        ModalPortal.attachListeners(this.modalId, {
+            '.task-creation-modal-overlay': {
+                'click': (e) => {
+                    if (e.target.classList.contains('task-creation-modal-overlay')) {
+                        this.closeTaskModal();
+                    }
+                }
+            },
+            '.modal-close-button': {
+                'click': () => this.closeTaskModal()
+            },
+            '.modal-button-primary': {
+                'click': () => this.createTaskFromModal()
+            },
+            '.modal-button-cancel': {
+                'click': () => this.closeTaskModal()
+            },
+            'input[data-field], textarea[data-field], select[data-field]': {
+                'input': (e) => this.updateNewTaskData(e.target.dataset.field, e.target.value),
+                'change': (e) => this.updateNewTaskData(e.target.dataset.field, e.target.value)
+            },
+            '.priority-option': {
+                'click': (e) => {
+                    const priority = e.currentTarget.dataset.priority;
+                    this.updateNewTaskData('priority', priority);
+                    this.updateModalContent();
+                }
+            },
+            '.label-input-field': {
+                'keydown': (e) => this.handlePortalLabelKeydown(e)
+            },
+            '.label-remove': {
+                'click': (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index);
+                    this.removeLabel(index);
+                    this.updateModalContent();
+                }
+            }
+        });
+    }
+
+    updateModalContent() {
+        if (ModalPortal.exists(this.modalId)) {
+            const modalContent = this.getModalContent();
+            ModalPortal.update(this.modalId, modalContent);
+            // Re-attach listeners after update
+            this.renderModalInPortal();
+        }
+    }
+
+    handlePortalLabelKeydown(e) {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+            e.preventDefault();
+            const newLabel = e.target.value.trim();
+            if (!this.newTaskData.labels.includes(newLabel)) {
+                this.newTaskData.labels = [...this.newTaskData.labels, newLabel];
+                this.updateModalContent();
+            }
+        }
+    }
+
+    getModalContent() {
+        // Generate modal HTML with proper styling
+        return `
+            <style>
+                ${this.getModalStyles()}
+            </style>
+            <div class="task-creation-modal-overlay">
+                <div class="task-creation-modal">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Create New Task</h3>
+                        <button class="modal-close-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        ${this.getModalFormContent()}
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button class="modal-button modal-button-cancel">
+                            Cancel
+                        </button>
+                        <button class="modal-button modal-button-primary" 
+                            ${!this.newTaskData.title.trim() || this.isCreatingTask ? 'disabled' : ''}>
+                            ${this.isCreatingTask ? 'Creating...' : 'Create Task'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getModalStyles() {
+        // Return all modal-related CSS styles
+        return `
+            .task-creation-modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                backdrop-filter: blur(4px);
+            }
+            
+            .task-creation-modal {
+                background: rgba(30, 30, 30, 0.95);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                width: 600px;
+                max-width: 90vw;
+                height: 90vh;
+                max-height: 900px;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            }
+            
+            .modal-header {
+                padding: 20px 24px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+            }
+            
+            .modal-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #e5e5e7;
+            }
+            
+            .modal-close-button {
+                background: transparent;
+                border: none;
+                color: rgba(255, 255, 255, 0.6);
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 6px;
+                transition: all 0.2s;
+            }
+            
+            .modal-close-button:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #e5e5e7;
+            }
+            
+            .modal-body {
+                padding: 24px;
+                overflow-y: auto;
+                flex: 1;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+            }
+            
+            .modal-body::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .modal-body::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .modal-body::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+            }
+            
+            .modal-footer {
+                padding: 16px 24px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                display: flex;
+                justify-content: flex-end;
+                gap: 12px;
+                flex-shrink: 0;
+            }
+            
+            .form-group {
+                margin-bottom: 24px;
+            }
+            
+            .form-label {
+                display: block;
+                margin-bottom: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                color: #e5e5e7;
+            }
+            
+            .form-input, .form-textarea, .form-select {
+                width: 100%;
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                padding: 10px 12px;
+                font-size: 14px;
+                color: #e5e5e7;
+                transition: all 0.2s;
+            }
+            
+            .form-input:focus, .form-textarea:focus, .form-select:focus {
+                outline: none;
+                border-color: #007aff;
+                background: rgba(0, 0, 0, 0.5);
+            }
+            
+            .form-textarea {
+                min-height: 80px;
+                resize: vertical;
+            }
+            
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+            
+            .priority-selector {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .priority-option {
+                padding: 6px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s;
+                border: 1px solid transparent;
+            }
+            
+            .priority-option.urgent {
+                background: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+                border-color: rgba(239, 68, 68, 0.2);
+            }
+            
+            .priority-option.high {
+                background: rgba(251, 146, 60, 0.1);
+                color: #fb923c;
+                border-color: rgba(251, 146, 60, 0.2);
+            }
+            
+            .priority-option.medium {
+                background: rgba(251, 191, 36, 0.1);
+                color: #fbbf24;
+                border-color: rgba(251, 191, 36, 0.2);
+            }
+            
+            .priority-option.low {
+                background: rgba(163, 163, 163, 0.1);
+                color: #a3a3a3;
+                border-color: rgba(163, 163, 163, 0.2);
+            }
+            
+            .priority-option.selected {
+                opacity: 1;
+                box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+            }
+            
+            .priority-option:hover {
+                opacity: 0.8;
+            }
+            
+            .labels-input {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 8px;
+                background: rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                min-height: 44px;
+                cursor: text;
+            }
+            
+            .label-tag {
+                background: rgba(59, 130, 246, 0.2);
+                color: #3b82f6;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .label-remove {
+                cursor: pointer;
+                opacity: 0.7;
+            }
+            
+            .label-remove:hover {
+                opacity: 1;
+            }
+            
+            .label-input-field {
+                background: transparent;
+                border: none;
+                outline: none;
+                color: #e5e5e7;
+                font-size: 14px;
+                flex: 1;
+                min-width: 100px;
+            }
+            
+            .modal-button {
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: none;
+            }
+            
+            .modal-button-cancel {
+                background: transparent;
+                color: #e5e5e7;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .modal-button-cancel:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .modal-button-primary {
+                background: #007aff;
+                color: white;
+            }
+            
+            .modal-button-primary:hover:not(:disabled) {
+                background: #0056b3;
+            }
+            
+            .modal-button-primary:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+        `;
+    }
+
+    getModalFormContent() {
+        // Escape HTML to prevent injection
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+        
+        return `
+            <!-- Title -->
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input 
+                    type="text" 
+                    class="form-input" 
+                    placeholder="Enter task title..."
+                    value="${escapeHtml(this.newTaskData.title)}"
+                    data-field="title"
+                />
+            </div>
+            
+            <!-- Description -->
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea 
+                    class="form-textarea" 
+                    placeholder="Add a more detailed description..."
+                    data-field="description"
+                >${escapeHtml(this.newTaskData.description)}</textarea>
+            </div>
+            
+            <!-- Priority and Status Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <div class="priority-selector">
+                        ${['urgent', 'high', 'medium', 'low'].map(priority => `
+                            <div 
+                                class="priority-option ${priority} ${this.newTaskData.priority === priority ? 'selected' : ''}"
+                                data-priority="${priority}"
+                            >
+                                ${priority.charAt(0).toUpperCase() + priority.slice(1)}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" data-field="status" value="${this.newTaskData.status}">
+                        <option value="todo" ${this.newTaskData.status === 'todo' ? 'selected' : ''}>To Do</option>
+                        <option value="in_progress" ${this.newTaskData.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="review" ${this.newTaskData.status === 'review' ? 'selected' : ''}>Review</option>
+                        <option value="done" ${this.newTaskData.status === 'done' ? 'selected' : ''}>Done</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Due Date and Project Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input 
+                        type="datetime-local" 
+                        class="form-input"
+                        value="${this.newTaskData.due_date || ''}"
+                        data-field="due_date"
+                    />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Project</label>
+                    <select class="form-select" data-field="project_id" value="${this.newTaskData.project_id || ''}">
+                        <option value="">No Project</option>
+                        ${this.projects.map(project => `
+                            <option value="${project.id}" ${this.newTaskData.project_id === project.id ? 'selected' : ''}>
+                                ${project.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Labels -->
+            <div class="form-group">
+                <label class="form-label">Labels</label>
+                <div class="labels-input">
+                    ${this.newTaskData.labels.map((label, index) => `
+                        <span class="label-tag">
+                            ${escapeHtml(label)}
+                            <span class="label-remove" data-index="${index}">×</span>
+                        </span>
+                    `).join('')}
+                    <input 
+                        type="text" 
+                        class="label-input-field"
+                        placeholder="Add label..."
+                    />
+                </div>
+            </div>
+        `;
+    }
+    
+    async createTaskFromModal() {
+        if (!this.newTaskData.title.trim() || this.isCreatingTask) return;
+        
+        this.isCreatingTask = true;
+        
+        try {
+            // Format the data for creation
+            const taskData = {
+                ...this.newTaskData,
+                labels: this.newTaskData.labels.length > 0 ? this.newTaskData.labels : [],
+                project_id: this.newTaskData.project_id || null
+            };
+            
+            // Format dates properly - convert from datetime-local to ISO format
+            if (this.newTaskData.due_date) {
+                const dueDate = new Date(this.newTaskData.due_date);
+                // Check if date is valid and reasonable (between 1900 and 2100)
+                if (!isNaN(dueDate.getTime()) && dueDate.getFullYear() > 1900 && dueDate.getFullYear() < 2100) {
+                    taskData.due_date = dueDate.toISOString();
+                } else {
+                    taskData.due_date = null;
+                }
+            }
+            
+            // Create the task
+            await this.createTask(taskData);
+            
+            // Close the modal
+            this.closeTaskModal();
+        } catch (error) {
+            console.error('[createTaskFromModal] Error:', error);
+            this.handleError(error, 'Creating task');
+        } finally {
+            this.isCreatingTask = false;
+        }
+    }
+    
+    focusLabelInput(event) {
+        const input = event.currentTarget.querySelector('.label-input-field');
+        if (input) {
+            input.focus();
+        }
+    }
+    
+    handleLabelKeydown(event) {
+        if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            const value = event.target.value.trim();
+            if (value && !this.newTaskData.labels.includes(value)) {
+                this.newTaskData.labels = [...this.newTaskData.labels, value];
+                event.target.value = '';
+                this.requestUpdate();
+            }
+        } else if (event.key === 'Backspace' && !event.target.value && this.newTaskData.labels.length > 0) {
+            // Remove last label if backspace on empty input
+            this.newTaskData.labels = this.newTaskData.labels.slice(0, -1);
+            this.requestUpdate();
+        }
+    }
+    
+    removeLabel(index) {
+        this.newTaskData.labels = this.newTaskData.labels.filter((_, i) => i !== index);
+        this.requestUpdate();
+    }
 
     async handleNaturalLanguageSubmit(event) {
+        console.log('[handleNaturalLanguageSubmit] Key pressed:', event.key);
         if (event.key === 'Enter') {
             const input = event.target.value;
+            console.log('[handleNaturalLanguageSubmit] Input value:', input);
             if (input.trim()) {
                 const task = this.parseNaturalLanguage(input);
+                console.log('[handleNaturalLanguageSubmit] Parsed task:', task);
                 await this.createTask(task);
                 event.target.value = '';
                 this.naturalLanguageHint = '';
@@ -1009,22 +2364,51 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     async createTask(taskData) {
+        console.log('[createTask] Called with:', taskData);
         try {
             const newTask = {
                 ...taskData,
                 project_id: this.projects[0]?.id || null,
-                assignee_id: 'current-user',
+                assignee_id: null, // Don't set assignee_id if we don't have a valid UUID
                 created_at: new Date().toISOString()
             };
+            console.log('[createTask] Prepared task:', newTask);
 
-            if (window.api) {
+            if (window.api && window.api.lims) {
+                console.log('[createTask] Calling API...');
                 const createdTask = await window.api.lims.createTask(newTask);
-                this.tasks = [...this.tasks, createdTask];
-                this.showKeyboardHint('Task created successfully!');
-                setTimeout(() => this.hideKeyboardHint(), 2000);
+                console.log('[createTask] API response:', createdTask);
+                
+                if (createdTask) {
+                    this.tasks = [...this.tasks, createdTask];
+                    await this.loadModuleData(); // Reload to ensure sync
+                    this.showKeyboardHint('Task created successfully!');
+                    setTimeout(() => this.hideKeyboardHint(), 2000);
+                } else {
+                    console.error('[createTask] No task returned from API');
+                    this.showKeyboardHint('Failed to create task: No response');
+                    setTimeout(() => this.hideKeyboardHint(), 3000);
+                }
+            } else {
+                console.error('[createTask] API not available');
+                this.showKeyboardHint('API not available');
+                setTimeout(() => this.hideKeyboardHint(), 3000);
             }
         } catch (error) {
-            this.handleError(error, 'Creating task');
+            console.error('[createTask] Error:', error);
+            
+            // Check if it's an authentication error
+            if (error.message && error.message.includes('logged in')) {
+                this.showKeyboardHint('Authentication required - using development mode');
+                setTimeout(() => this.hideKeyboardHint(), 4000);
+                
+                // For now, don't trigger auth flow in development
+                // if (window.api && window.api.common && window.api.common.startFirebaseAuth) {
+                //     window.api.common.startFirebaseAuth();
+                // }
+            } else {
+                this.handleError(error, 'Creating task');
+            }
         }
     }
 
@@ -1049,11 +2433,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             { key: 'Shift + X', action: 'Select all tasks' },
             { key: 'Arrow Keys', action: 'Navigate between tasks' },
             { key: 'Space', action: 'Start drag (when task focused)' },
+            { key: 'Cmd/Ctrl + Shift + F', action: 'Toggle fullscreen' },
             { key: '?', action: 'Show this help' }
         ];
         
         const message = '🎮 Keyboard Shortcuts:\n\n' + 
-            shortcuts.map(s => `${s.key.padEnd(15)} → ${s.action}`).join('\n') +
+            shortcuts.map(s => `${s.key.padEnd(20)} → ${s.action}`).join('\n') +
             '\n\n💡 Tip: Natural language input supports dates and priorities!';
         
         alert(message);
@@ -1109,7 +2494,6 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 ${this.renderKeyboardHint()}
                 ${this.renderSelectionCount()}
                 ${this.renderValidationErrors()}
-                ${this.renderShortcutIndicator()}
             </div>
         `;
     }
@@ -1287,8 +2671,34 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 data-task-id="${task.id}"
                 @dragstart=${(e) => this.handleDragStart(e, task)}
                 @click=${(e) => this.handleTaskClick(e, task)}
+                @dblclick=${(e) => this.handleEditTask(e, task)}
                 @keydown=${this.handleKeyDown}
             >
+                <div class="task-actions">
+                    <button 
+                        class="task-action-button task-edit-button"
+                        @click=${(e) => this.handleEditTask(e, task)}
+                        title="Edit task"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button 
+                        class="task-action-button task-delete-button"
+                        @click=${(e) => this.handleDeleteTask(e, task)}
+                        title="Delete task"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+                
                 <div class="task-title">${task.title}</div>
                 ${task.description ? html`
                     <div class="task-description">${task.description}</div>
@@ -1524,6 +2934,297 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         }
     }
 
+    async handleDeleteTask(event, task) {
+        event.stopPropagation(); // Prevent task selection
+        if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
+            try {
+                await window.api.lims.deleteTask(task.id);
+                // Remove from local state
+                this.tasks = this.tasks.filter(t => t.id !== task.id);
+                this.requestUpdate();
+                console.log(`[TaskManagement] Deleted task: ${task.title}`);
+            } catch (error) {
+                this.handleError(error, 'Deleting task');
+            }
+        }
+    }
+
+    handleEditTask(event, task) {
+        event.stopPropagation(); // Prevent task selection
+        this.editingTask = { ...task };
+        this.showEditModal = true;
+        this.modalId = 'task-edit-modal';
+        this.requestUpdate();
+        
+        // Render edit modal in portal
+        setTimeout(() => this.renderEditModalInPortal(), 0);
+    }
+
+    renderEditModalInPortal() {
+        if (!this.showEditModal || !this.editingTask) {
+            ModalPortal.destroy(this.modalId);
+            return;
+        }
+
+        const modalContent = this.getEditModalContent();
+        ModalPortal.create(this.modalId, modalContent);
+        
+        // Attach event listeners
+        ModalPortal.attachListeners(this.modalId, {
+            '.task-edit-modal-overlay': {
+                'click': (e) => {
+                    if (e.target.classList.contains('task-edit-modal-overlay')) {
+                        this.closeEditModal();
+                    }
+                }
+            },
+            '.modal-close-button': {
+                'click': () => this.closeEditModal()
+            },
+            '.modal-button-primary': {
+                'click': () => this.saveTaskEdit()
+            },
+            '.modal-button-cancel': {
+                'click': () => this.closeEditModal()
+            },
+            'input[data-field], textarea[data-field], select[data-field]': {
+                'input': (e) => {
+                    this.editingTask[e.target.dataset.field] = e.target.value;
+                },
+                'change': (e) => {
+                    this.editingTask[e.target.dataset.field] = e.target.value;
+                }
+            },
+            '.priority-option': {
+                'click': (e) => {
+                    const priority = e.currentTarget.dataset.priority;
+                    this.editingTask.priority = priority;
+                    this.updateEditModalContent();
+                }
+            },
+            '.label-input-field': {
+                'keydown': (e) => this.handleEditLabelKeydown(e)
+            },
+            '.label-remove': {
+                'click': (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index);
+                    this.removeEditLabel(index);
+                    this.updateEditModalContent();
+                }
+            }
+        });
+    }
+
+    closeEditModal() {
+        this.showEditModal = false;
+        this.editingTask = null;
+        ModalPortal.destroy(this.modalId);
+        this.modalId = 'task-creation-modal';
+        this.requestUpdate();
+    }
+
+    async saveTaskEdit() {
+        if (!this.editingTask) return;
+        
+        // Store task data before any async operations
+        const taskToUpdate = { ...this.editingTask };
+        const taskId = taskToUpdate.id;
+        const taskTitle = taskToUpdate.title;
+        
+        try {
+            // Update task via API
+            await window.api.lims.updateTask(taskId, taskToUpdate);
+            
+            // Update local state
+            this.tasks = this.tasks.map(t => 
+                t.id === taskId ? { ...taskToUpdate } : t
+            );
+            
+            this.closeEditModal();
+            this.showNotification('Task updated successfully');
+            console.log(`[TaskManagement] Updated task: ${taskTitle}`);
+        } catch (error) {
+            this.handleError(error, 'Updating task');
+            this.showNotification('Failed to update task', 'error');
+        }
+    }
+
+    updateEditModalContent() {
+        if (ModalPortal.exists(this.modalId)) {
+            const modalContent = this.getEditModalContent();
+            ModalPortal.update(this.modalId, modalContent);
+            // Re-attach listeners after update
+            this.renderEditModalInPortal();
+        }
+    }
+
+    handleEditLabelKeydown(e) {
+        if (e.key === 'Enter' && e.target.value.trim()) {
+            e.preventDefault();
+            const newLabel = e.target.value.trim();
+            if (!this.editingTask.labels) {
+                this.editingTask.labels = [];
+            }
+            if (!this.editingTask.labels.includes(newLabel)) {
+                this.editingTask.labels = [...this.editingTask.labels, newLabel];
+                this.updateEditModalContent();
+            }
+        }
+    }
+
+    removeEditLabel(index) {
+        if (this.editingTask && this.editingTask.labels) {
+            this.editingTask.labels = this.editingTask.labels.filter((_, i) => i !== index);
+            this.updateEditModalContent();
+        }
+    }
+
+    getEditModalContent() {
+        if (!this.editingTask) return '';
+        
+        return `
+            <style>
+                ${this.getModalStyles()}
+            </style>
+            <div class="task-edit-modal-overlay">
+                <div class="task-creation-modal">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Edit Task</h3>
+                        <button class="modal-close-button">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        ${this.getEditModalFormContent()}
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button class="modal-button modal-button-cancel">
+                            Cancel
+                        </button>
+                        <button class="modal-button modal-button-primary">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getEditModalFormContent() {
+        const task = this.editingTask;
+        if (!task) return '';
+        
+        // Escape HTML to prevent injection
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+        
+        return `
+            <!-- Title -->
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input 
+                    type="text" 
+                    class="form-input" 
+                    placeholder="Enter task title..."
+                    value="${escapeHtml(task.title)}"
+                    data-field="title"
+                />
+            </div>
+            
+            <!-- Description -->
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea 
+                    class="form-textarea" 
+                    placeholder="Add a more detailed description..."
+                    data-field="description"
+                >${escapeHtml(task.description)}</textarea>
+            </div>
+            
+            <!-- Priority and Status Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <div class="priority-selector">
+                        ${['urgent', 'high', 'medium', 'low'].map(priority => `
+                            <div 
+                                class="priority-option ${priority} ${task.priority === priority ? 'selected' : ''}"
+                                data-priority="${priority}"
+                            >
+                                ${priority.charAt(0).toUpperCase() + priority.slice(1)}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" data-field="status" value="${task.status || 'todo'}">
+                        <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>To Do</option>
+                        <option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="review" ${task.status === 'review' ? 'selected' : ''}>Review</option>
+                        <option value="done" ${task.status === 'done' ? 'selected' : ''}>Done</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Due Date and Project Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input 
+                        type="datetime-local" 
+                        class="form-input"
+                        value="${task.due_date || ''}"
+                        data-field="due_date"
+                    />
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Project</label>
+                    <select class="form-select" data-field="project_id" value="${task.project_id || ''}">
+                        <option value="">No Project</option>
+                        ${this.projects.map(project => `
+                            <option value="${project.id}" ${task.project_id === project.id ? 'selected' : ''}>
+                                ${project.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Labels -->
+            <div class="form-group">
+                <label class="form-label">Labels</label>
+                <div class="labels-input">
+                    ${(task.labels || []).map((label, index) => `
+                        <span class="label-tag">
+                            ${escapeHtml(label)}
+                            <span class="label-remove" data-index="${index}">×</span>
+                        </span>
+                    `).join('')}
+                    <input 
+                        type="text" 
+                        class="label-input-field"
+                        placeholder="Add label..."
+                    />
+                </div>
+            </div>
+        `;
+    }
+
     renderKeyboardHint() {
         return html`
             <div class="keyboard-hint ${this.keyboardHint ? 'visible' : ''}">
@@ -1712,10 +3413,22 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     // Virtual Scrolling for Performance
     initializeVirtualScrolling() {
+        if (!this.shadowRoot) {
+            console.warn('[initializeVirtualScrolling] Shadow root not ready');
+            return;
+        }
+        
         // Set up intersection observers for each kanban column
         const columns = this.shadowRoot.querySelectorAll('.kanban-column');
+        if (!columns || columns.length === 0) {
+            console.warn('[initializeVirtualScrolling] No kanban columns found');
+            return;
+        }
+        
         columns.forEach(column => {
             const columnId = column.dataset.status;
+            if (!columnId) return;
+            
             if (this.intersectionObservers[columnId]) {
                 this.intersectionObservers[columnId].disconnect();
             }
@@ -1919,6 +3632,143 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     // Template Panel UI
+    renderTaskCreationModal() {
+        if (!this.showTaskCreationModal) {
+            return '';
+        }
+        
+        return html`
+            <div class="task-creation-modal-overlay" @click=${() => this.closeTaskModal()}>
+                <div class="task-creation-modal" @click=${(e) => e.stopPropagation()}>
+                    <div class="modal-header">
+                        <h3 class="modal-title">Create New Task</h3>
+                        <button class="modal-close-button" @click=${() => this.closeTaskModal()}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <!-- Title -->
+                        <div class="form-group">
+                            <label class="form-label">Title</label>
+                            <input 
+                                type="text" 
+                                class="form-input" 
+                                placeholder="Enter task title..."
+                                .value=${this.newTaskData.title}
+                                @input=${(e) => this.updateNewTaskData('title', e.target.value)}
+                            />
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <textarea 
+                                class="form-textarea" 
+                                placeholder="Add a more detailed description..."
+                                .value=${this.newTaskData.description || ''}
+                                @input=${(e) => this.updateNewTaskData('description', e.target.value)}
+                            ></textarea>
+                        </div>
+                        
+                        <!-- Priority and Status Row -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Priority</label>
+                                <div class="priority-selector">
+                                    ${['urgent', 'high', 'medium', 'low'].map(priority => html`
+                                        <div 
+                                            class="priority-option ${priority} ${this.newTaskData.priority === priority ? 'selected' : ''}"
+                                            @click=${() => this.updateNewTaskData('priority', priority)}
+                                        >
+                                            ${priority.charAt(0).toUpperCase() + priority.slice(1)}
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select 
+                                    class="form-select"
+                                    .value=${this.newTaskData.status}
+                                    @change=${(e) => this.updateNewTaskData('status', e.target.value)}
+                                >
+                                    <option value="todo">To Do</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="review">Review</option>
+                                    <option value="done">Done</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Due Date and Project Row -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Due Date</label>
+                                <input 
+                                    type="datetime-local" 
+                                    class="form-input"
+                                    .value=${this.newTaskData.due_date || ''}
+                                    @change=${(e) => this.updateNewTaskData('due_date', e.target.value)}
+                                />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Project</label>
+                                <select 
+                                    class="form-select"
+                                    .value=${this.newTaskData.project_id || ''}
+                                    @change=${(e) => this.updateNewTaskData('project_id', e.target.value)}
+                                >
+                                    <option value="">No Project</option>
+                                    ${this.projects.map(project => html`
+                                        <option value="${project.id}">${project.name}</option>
+                                    `)}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Labels -->
+                        <div class="form-group">
+                            <label class="form-label">Labels</label>
+                            <div class="labels-input" @click=${(e) => this.focusLabelInput(e)}>
+                                ${this.newTaskData.labels.map((label, index) => html`
+                                    <span class="label-tag">
+                                        ${label}
+                                        <span class="label-remove" @click=${() => this.removeLabel(index)}>×</span>
+                                    </span>
+                                `)}
+                                <input 
+                                    type="text" 
+                                    class="label-input-field"
+                                    placeholder="Add label..."
+                                    @keydown=${(e) => this.handleLabelKeydown(e)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button class="modal-button modal-button-cancel" @click=${() => this.closeTaskModal()}>
+                            Cancel
+                        </button>
+                        <button 
+                            class="modal-button modal-button-primary" 
+                            @click=${() => this.createTaskFromModal()}
+                            ?disabled=${!this.newTaskData.title.trim() || this.isCreatingTask}
+                        >
+                            ${this.isCreatingTask ? 'Creating...' : 'Create Task'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     renderTemplatePanel() {
         if (!this.templatePanelOpen) return '';
         
@@ -1927,7 +3777,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 <div class="template-panel" @click=${(e) => e.stopPropagation()}>
                     <div class="template-panel-header">
                         <h3>Task Templates</h3>
-                        <button class="close-button" @click=${() => this.templatePanelOpen = false}>
+                        <button class="close-button" @click=${(e) => {
+                            e.stopPropagation();
+                            this.templatePanelOpen = false;
+                            this.requestUpdate();
+                        }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18" />
                                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -1968,24 +3822,36 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     async createFromTemplate(template) {
-        const task = { ...template.template };
+        console.log('[createFromTemplate] Called with template:', template);
         
-        // Show dialog to customize template values
-        const customTitle = prompt(`Task title:`, task.title);
-        if (!customTitle) return;
+        // Close template panel first
+        this.templatePanelOpen = false;
         
-        task.title = customTitle;
-        task.created_from_template = template.id;
+        // Pre-fill the new task data with template values
+        this.newTaskData = {
+            title: template.template.title || '',
+            description: template.template.description || '',
+            status: template.template.status || 'todo',
+            priority: template.template.priority || 'medium',
+            labels: Array.isArray(template.template.labels) ? [...template.template.labels] : [],
+            due_date: template.template.due_date || '',
+            project_id: this.projects[0]?.id || null,
+            assignee_id: null,
+            created_from_template: template.id
+        };
         
-        try {
-            await this.limsApi.createTask(task);
-            this.templatePanelOpen = false;
-            await this.loadModuleData();
-            this.showNotification(`Task created from template: ${template.name}`);
-        } catch (error) {
-            this.showKeyboardHint(`Failed to create task: ${error.message}`);
-            setTimeout(() => this.hideKeyboardHint(), 3000);
-        }
+        // Open the task creation modal with pre-filled data
+        this.showTaskCreationModal = true;
+        
+        // Force update to ensure UI refreshes
+        this.requestUpdate();
+        
+        // Render modal in portal after update
+        setTimeout(() => this.renderModalInPortal(), 0);
+        
+        // Show a hint about the template
+        this.showKeyboardHint(`📋 Using template: ${template.name}`);
+        setTimeout(() => this.hideKeyboardHint(), 2000);
     }
     
     showNotification(message, type = 'info') {
@@ -2068,15 +3934,6 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         `;
     }
     
-    renderShortcutIndicator() {
-        return html`
-            <div class="shortcut-indicator">
-                <span class="shortcut-hint">Press <kbd>?</kbd> for keyboard shortcuts</span>
-                <span class="shortcut-hint">Press <kbd>C</kbd> to create task</span>
-                <span class="shortcut-hint">Press <kbd>${(navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl')} + K</kbd> for commands</span>
-            </div>
-        `;
-    }
 }
 
 customElements.define('task-management-module-enhanced', TaskManagementModuleEnhanced);

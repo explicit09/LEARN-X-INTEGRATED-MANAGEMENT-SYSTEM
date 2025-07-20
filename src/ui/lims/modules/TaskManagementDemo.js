@@ -12,7 +12,7 @@ export class TaskManagementDemo {
                 description: "Users getting logged out after 5 minutes of inactivity",
                 status: "todo",
                 priority: "high",
-                assignee_id: "john-dev",
+                assignee_id: null, // Don't use fake UUIDs
                 labels: "bug,platform,client",
                 due_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Tomorrow
             },
@@ -21,7 +21,7 @@ export class TaskManagementDemo {
                 description: "Set up accounts and schedule admin training",
                 status: "todo",
                 priority: "high",
-                assignee_id: "sarah-cs",
+                assignee_id: null,
                 labels: "client,onboarding,school"
             },
             {
@@ -29,7 +29,7 @@ export class TaskManagementDemo {
                 description: "Based on teacher feedback - LaTeX rendering issues",
                 status: "todo",
                 priority: "medium",
-                assignee_id: "mike-dev",
+                assignee_id: null,
                 labels: "feature,ai,feedback"
             },
             
@@ -39,7 +39,7 @@ export class TaskManagementDemo {
                 description: "Current avg 8s, target <3s for better UX",
                 status: "in_progress",
                 priority: "urgent",
-                assignee_id: "ai-team",
+                assignee_id: null,
                 labels: "performance,ai,optimization",
                 completion_percentage: 60
             },
@@ -48,7 +48,7 @@ export class TaskManagementDemo {
                 description: "Progress not syncing properly for batch enrollments",
                 status: "in_progress",
                 priority: "high",
-                assignee_id: "lisa-dev",
+                assignee_id: null,
                 labels: "bug,platform,sync"
             },
             
@@ -58,7 +58,7 @@ export class TaskManagementDemo {
                 description: "PR ready for review - parent portal implementation",
                 status: "review",
                 priority: "high",
-                assignee_id: "senior-dev",
+                assignee_id: null,
                 labels: "feature,code-review"
             },
             {
@@ -66,7 +66,7 @@ export class TaskManagementDemo {
                 description: "Enhanced prompts based on teacher feedback",
                 status: "review",
                 priority: "medium",
-                assignee_id: "ai-team",
+                assignee_id: null,
                 labels: "ai,improvement,feedback"
             },
             
@@ -76,7 +76,7 @@ export class TaskManagementDemo {
                 description: "Educational videos now work on all iPad models",
                 status: "done",
                 priority: "high",
-                assignee_id: "frontend-team",
+                assignee_id: null,
                 labels: "bug,platform,completed",
                 completion_percentage: 100
             },
@@ -85,7 +85,7 @@ export class TaskManagementDemo {
                 description: "All accounts active, training completed",
                 status: "done",
                 priority: "medium",
-                assignee_id: "cs-team",
+                assignee_id: null,
                 labels: "client,onboarding,completed"
             }
         ];

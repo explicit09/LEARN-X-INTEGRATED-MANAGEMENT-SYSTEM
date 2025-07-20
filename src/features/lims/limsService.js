@@ -248,6 +248,21 @@ class LimsService {
         return 7 * 24 * 60 * 60 * 1000; // Default to 7 days
     }
 
+    // Team Members
+    async getTeamMembers() {
+        try {
+            console.log('[LimsService] Getting team members');
+            const members = await this.db.query('team_members', {
+                orderBy: { field: 'name', direction: 'asc' }
+            });
+            console.log(`[LimsService] Got ${members.length} team members`);
+            return members;
+        } catch (error) {
+            console.error('[LimsService] Error getting team members:', error);
+            return [];
+        }
+    }
+
     // Subscribe to real-time updates
     subscribeToTasks(callback) {
         return this.db.subscribe('tasks', {}, (payload) => {

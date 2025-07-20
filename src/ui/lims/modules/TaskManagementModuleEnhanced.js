@@ -4,6 +4,8 @@ import { TaskManagementDemo } from './TaskManagementDemo.js';
 import { ModalPortal } from '../utils/modalPortal.js';
 import { TaskSearchAndFilterIntegration } from './taskManagement/TaskSearchAndFilterIntegration.js';
 import { TaskDueDateModule } from './taskManagement/dueDate/TaskDueDateModule.js';
+import { TaskAssigneeModule } from './taskManagement/assignee/TaskAssigneeModule.js';
+import './taskManagement/assignee/TaskAssigneeModule.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -1445,6 +1447,29 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             .sort-icon.desc {
                 transform: rotate(180deg);
             }
+
+            /* Assignee Avatar Styles */
+            .task-assignee {
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                background: var(--avatar-bg, #007aff);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 600;
+                flex-shrink: 0;
+                margin-left: auto;
+            }
+
+            .task-assignee img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
         `
     ];
 
@@ -1471,6 +1496,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         showTaskCreationModal: { type: Boolean },
         sortBy: { type: String },
         sortDirection: { type: String },
+        teamMembers: { type: Array },
         modalId: { type: String },
         newTaskData: { type: Object },
         isCreatingTask: { type: Boolean },
@@ -1493,6 +1519,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.selectedTask = null;
         this.sortBy = 'created_at';
         this.sortDirection = 'desc';
+        this.teamMembers = [];
         this.commandPaletteOpen = false;
         this.selectedTasks = [];
         this.keyboardHint = '';
@@ -1667,14 +1694,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             this.setLoading(true, 'Loading enhanced task management...');
             
             if (window.api && window.api.lims) {
-                console.log('[loadModuleData] Fetching tasks and projects...');
-                const [tasks, projects] = await Promise.all([
+                console.log('[loadModuleData] Fetching tasks, projects, and team members...');
+                const [tasks, projects, teamMembers] = await Promise.all([
                     window.api.lims.getTasks(),
-                    window.api.lims.getProjects()
+                    window.api.lims.getProjects(),
+                    window.api.lims.getTeamMembers()
                 ]);
                 
                 this.tasks = tasks || [];
                 this.projects = projects || [];
+                this.teamMembers = teamMembers || [];
                 
                 console.log(`[loadModuleData] Loaded ${this.tasks.length} tasks and ${this.projects.length} projects`);
                 
@@ -2130,6 +2159,40 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             return html`<div class="task-due-overlay"></div>`;
         }
         return '';
+    }
+
+    renderAssigneeAvatar(task) {
+        if (!task.assignee_id) {
+            return '';
+        }
+        
+        const assignee = this.teamMembers.find(m => m.id === task.assignee_id);
+        if (!assignee) {
+            return '';
+        }
+        
+        const initials = assignee.name.split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+        
+        // Generate consistent color based on name
+        let hash = 0;
+        for (let i = 0; i < assignee.name.length; i++) {
+            hash = assignee.name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = hash % 360;
+        const color = `hsl(${hue}, 60%, 50%)`;
+        
+        return html`
+            <div class="task-assignee" style="background: ${color}" title="${assignee.name}">
+                ${assignee.avatar_url 
+                    ? html`<img src="${assignee.avatar_url}" alt="${assignee.name}" />`
+                    : initials
+                }
+            </div>
+        `;
     }
 
     sortTasks(tasks) {
@@ -3176,11 +3239,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     
                     ${this.renderDueDateBadge(task)}
                     
-                    ${task.assignee_id ? html`
-                        <div class="task-assignee">
-                            ${task.assignee_id.charAt(0).toUpperCase()}
-                        </div>
-                    ` : ''}
+                    ${this.renderAssigneeAvatar(task)}
                     
                     <button class="ai-insights-button" 
                         @click=${(e) => this.handleAIInsights(e, task)}
@@ -3485,6 +3544,23 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 }
             }
         });
+        
+        // Render assignee selector in the edit modal
+        setTimeout(() => {
+            const container = document.querySelector('#edit-assignee-container');
+            if (container) {
+                const assigneeModule = document.createElement('task-assignee-module');
+                assigneeModule.selectedAssigneeId = this.editingTask.assignee_id;
+                assigneeModule.addEventListener('assignee-selected', (e) => {
+                    this.editingTask.assignee_id = e.detail.assigneeId;
+                });
+                assigneeModule.addEventListener('assignee-removed', () => {
+                    this.editingTask.assignee_id = null;
+                });
+                container.innerHTML = '';
+                container.appendChild(assigneeModule);
+            }
+        }, 0);
     }
 
     closeEditModal() {
@@ -3694,6 +3770,19 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
             </div>
             
+            <!-- Assignee Row -->
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Assignee</label>
+                    <div id="edit-assignee-container">
+                        <!-- Assignee selector will be rendered here -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <!-- Empty for spacing -->
+                </div>
+            </div>
+            
             <!-- Labels -->
             <div class="form-group">
                 <label class="form-label">Labels</label>
@@ -3763,11 +3852,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                                 ` : ''}
                             </div>
                             <div class="list-col" style="flex: 1;">
-                                ${task.assignee_id ? html`
-                                    <div class="task-assignee">
-                                        ${task.assignee_id.charAt(0).toUpperCase()}
-                                    </div>
-                                ` : ''}
+                                ${this.renderAssigneeAvatar(task)}
                             </div>
                             <div class="list-col" style="flex: 0.5;">
                                 <button class="ai-insights-button" 
@@ -4218,6 +4303,21 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                                         <option value="${project.id}">${project.name}</option>
                                     `)}
                                 </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Assignee Row -->
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Assignee</label>
+                                <task-assignee-module
+                                    .selectedAssigneeId=${this.newTaskData.assignee_id}
+                                    @assignee-selected=${(e) => this.updateNewTaskData('assignee_id', e.detail.assigneeId)}
+                                    @assignee-removed=${() => this.updateNewTaskData('assignee_id', null)}
+                                ></task-assignee-module>
+                            </div>
+                            <div class="form-group">
+                                <!-- Empty for spacing -->
                             </div>
                         </div>
                         

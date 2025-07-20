@@ -10,7 +10,8 @@ class LimsService {
     async getTasks(filters = {}) {
         try {
             const tasks = await this.db.findMany('tasks', filters, {
-                orderBy: 'created_at.desc',
+                orderBy: 'created_at',
+                ascending: false,
                 limit: 100
             });
             return tasks;
@@ -31,16 +32,58 @@ class LimsService {
 
     async createTask(taskData) {
         try {
+            
+            // Clean the task data before creating
+            const cleanedData = { ...taskData };
+            
+            // Fix UUID fields that might be objects or invalid values
+            const uuidFields = ['assignee_id', 'project_id', 'epic_id', 'sprint_id'];
+            uuidFields.forEach(field => {
+                if (cleanedData[field] && typeof cleanedData[field] === 'object') {
+                    // If it's an object, try to extract the id property
+                    cleanedData[field] = cleanedData[field].id || null;
+                }
+                // Handle empty strings or 'current-user'
+                if (cleanedData[field] === '' || cleanedData[field] === 'current-user') {
+                    cleanedData[field] = null;
+                }
+            });
+            
+            // Only include fields that exist in the database
             const task = {
-                ...taskData,
-                status: taskData.status || 'todo',
+                title: cleanedData.title,
+                description: cleanedData.description || null,
+                status: cleanedData.status || 'todo',
+                priority: cleanedData.priority || 'medium',
+                due_date: cleanedData.due_date || null,
+                assignee_id: cleanedData.assignee_id || null,
+                project_id: cleanedData.project_id, // Required field
+                epic_id: cleanedData.epic_id || null,
+                sprint_id: cleanedData.sprint_id || null,
+                story_points: cleanedData.story_points || null,
+                time_estimate: cleanedData.time_estimate || null,
+                time_spent: cleanedData.time_spent || 0,
+                position: cleanedData.position || null,
                 // Convert labels from string to array if needed
-                labels: typeof taskData.labels === 'string' 
-                    ? taskData.labels.split(',').map(l => l.trim()).filter(l => l)
-                    : taskData.labels || [],
+                labels: typeof cleanedData.labels === 'string' 
+                    ? cleanedData.labels.split(',').map(l => l.trim()).filter(l => l)
+                    : cleanedData.labels || [],
+                completion_percentage: cleanedData.completion_percentage || 0,
+                ai_insights: cleanedData.ai_insights || null,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
+            
+            // Ensure project_id is provided (it's required)
+            if (!task.project_id) {
+                throw new Error('project_id is required to create a task');
+            }
+            
+            console.log('[LimsService] Creating task with cleaned data:', {
+                ...task,
+                description: task.description ? '...' : undefined // Don't log full description
+            });
+            
             return await this.db.create('tasks', task);
         } catch (error) {
             console.error('[LimsService] Error creating task:', error);
@@ -61,12 +104,31 @@ class LimsService {
                 updated_at: new Date().toISOString()
             };
             
+            // Fix UUID fields that might be objects
+            const uuidFields = ['assignee_id', 'project_id', 'epic_id', 'sprint_id'];
+            uuidFields.forEach(field => {
+                if (updatedTask[field] && typeof updatedTask[field] === 'object') {
+                    // If it's an object, try to extract the id property
+                    updatedTask[field] = updatedTask[field].id || null;
+                }
+                // Also handle empty strings or 'current-user'
+                if (updatedTask[field] === '' || updatedTask[field] === 'current-user') {
+                    updatedTask[field] = null;
+                }
+            });
+            
             // Remove undefined values
             Object.keys(updatedTask).forEach(key => 
                 updatedTask[key] === undefined && delete updatedTask[key]
             );
             
-            return await this.db.update('tasks', { id: taskId }, updatedTask);
+            console.log('[LimsService] Updating task with data:', {
+                taskId,
+                ...updatedTask,
+                description: updatedTask.description ? '...' : undefined
+            });
+            
+            return await this.db.update('tasks', taskId, updatedTask);
         } catch (error) {
             console.error('[LimsService] Error updating task:', error);
             throw error;
@@ -75,7 +137,7 @@ class LimsService {
 
     async deleteTask(taskId) {
         try {
-            return await this.db.delete('tasks', { id: taskId });
+            return await this.db.delete('tasks', taskId);
         } catch (error) {
             console.error('[LimsService] Error deleting task:', error);
             throw error;
@@ -85,7 +147,8 @@ class LimsService {
     async getProjects(filters = {}) {
         try {
             const projects = await this.db.findMany('projects', filters, {
-                orderBy: 'created_at.desc'
+                orderBy: 'created_at',
+                ascending: false
             });
             return projects;
         } catch (error) {

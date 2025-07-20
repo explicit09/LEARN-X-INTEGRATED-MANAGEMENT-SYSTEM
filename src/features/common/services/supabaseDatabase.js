@@ -3,11 +3,29 @@ const supabaseClient = require('./supabaseClient');
 class SupabaseDatabase {
     constructor() {
         this.client = null;
+        this.useServiceClient = false;
     }
 
     initialize() {
-        this.client = supabaseClient.getClient();
-        console.log('[SupabaseDatabase] Initialized');
+        // For development, use service client to bypass RLS
+        // In production, you should use the regular client with proper auth
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        
+        if (isDevelopment) {
+            try {
+                this.client = supabaseClient.getServiceClient();
+                this.useServiceClient = true;
+                console.log('[SupabaseDatabase] Initialized with service client (bypassing RLS for development)');
+            } catch (error) {
+                console.log('[SupabaseDatabase] Service client not available, falling back to regular client');
+                this.client = supabaseClient.getClient();
+                this.useServiceClient = false;
+            }
+        } else {
+            this.client = supabaseClient.getClient();
+            this.useServiceClient = false;
+            console.log('[SupabaseDatabase] Initialized with regular client');
+        }
     }
 
     // Generic CRUD operations

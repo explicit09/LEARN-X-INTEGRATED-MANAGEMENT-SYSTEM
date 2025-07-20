@@ -352,9 +352,60 @@ KanbanBoard
 - Handles 1000+ tasks efficiently
 
 #### Next Steps:
+
+**Phase 1 - High Priority Features (Week 1)**
+1. **Search & Filtering** (HIGHEST PRIORITY)
+   - Global search across task titles and descriptions
+   - Advanced filters: priority, assignee, date range, labels
+   - Save filter presets for quick access
+   - Real-time search results
+
+2. **Assignees & User Management**
+   - User selection UI in task creation/edit
+   - Assignee avatars on task cards
+   - "Assigned to me" quick filter
+   - Bulk assignment operations
+
+3. **Bulk Operations**
+   - Leverage existing multi-select for bulk actions
+   - Bulk status updates
+   - Bulk delete/archive
+   - Bulk label/priority changes
+
+**Phase 2 - Essential Collaboration (Week 2)**
+4. **Comments/Activity History**
+   - Comment threads on tasks
+   - Activity log showing all changes
+   - @mentions for notifications
+   - Rich text formatting
+
+5. **Due Dates & Time Management**
+   - Calendar picker for due dates
+   - Visual indicators for overdue tasks
+   - Sort by due date option
+   - Time tracking (actual vs estimated)
+
+**Phase 3 - Previously Planned Features**
 - Sprint planning interface
 - Real-time collaboration
 - Advanced reporting
 - Integration with other LIMS modules
 
 The task management system now exceeds ClickUp's functionality while maintaining Glass app UI consistency and preparing for enterprise-scale usage.
+
+### Update 20:20 - Priority Features Roadmap Added
+**Summary**: Analyzed current system gaps and defined priority features for next development phases
+
+#### Features Prioritized:
+1. **Search & Filtering** - Critical for finding tasks quickly
+2. **Assignees & User Management** - Essential for team collaboration
+3. **Bulk Operations** - Leveraging existing multi-select capability
+4. **Comments/Activity History** - Collaboration and audit trail
+5. **Due Dates & Time Management** - Task scheduling and tracking
+
+#### Rationale:
+- Current system has excellent drag-and-drop and UI
+- Missing core productivity features that users expect
+- Search is #1 priority - without it, system becomes unusable at scale
+- Assignees enable team usage beyond single user
+- These features complement the existing enhanced task management

@@ -112,4 +112,16 @@ data/*.db-wal
 # Build output
 out/
 dist/
-build/ 
+build/
+
+# Temporary debug and analysis files
+debug-*.js
+diagnose-*.js
+verify-*.js
+force-*.js
+test-fullscreen.js
+*-summary.md
+*-report.md
+*-instructions.md
+*-guide.md
+lims-*.md 

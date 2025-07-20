@@ -117,11 +117,19 @@ module.exports = {
     ipcMain.handle('lims:deleteTask', async (event, taskId) => await limsService.deleteTask(taskId));
     ipcMain.handle('lims:getProjects', async (event, filters) => await limsService.getProjects(filters));
     ipcMain.handle('lims:getActiveProjectsCount', async () => await limsService.getActiveProjectsCount());
+    ipcMain.handle('lims:getTeamMembers', async () => await limsService.getTeamMembers());
     ipcMain.handle('lims:getTeamMembersCount', async () => await limsService.getTeamMembersCount());
     ipcMain.handle('lims:getSprints', async (event, projectId) => await limsService.getSprints(projectId));
     ipcMain.handle('lims:createSprint', async (event, sprintData) => await limsService.createSprint(sprintData));
     ipcMain.handle('lims:getTaskMetrics', async (event, period) => await limsService.getTaskMetrics(period));
     ipcMain.handle('lims:closeDashboard', async () => limsService.closeDashboard());
+    
+    // Comments and Activities
+    ipcMain.handle('lims:getTaskComments', async (event, taskId) => await limsService.getTaskComments(taskId));
+    ipcMain.handle('lims:addTaskComment', async (event, taskId, commentData) => await limsService.addTaskComment(taskId, commentData));
+    ipcMain.handle('lims:updateTaskComment', async (event, commentId, updates) => await limsService.updateTaskComment(commentId, updates));
+    ipcMain.handle('lims:deleteTaskComment', async (event, commentId) => await limsService.deleteTaskComment(commentId));
+    ipcMain.handle('lims:getTaskActivities', async (event, taskId) => await limsService.getTaskActivities(taskId));
 
     // ModelStateService
     ipcMain.handle('model:validate-key', async (e, { provider, key }) => await modelStateService.handleValidateKey(provider, key));

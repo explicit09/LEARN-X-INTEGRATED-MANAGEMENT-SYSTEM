@@ -318,6 +318,7 @@ contextBridge.exposeInMainWorld('api', {
     getActiveProjectsCount: () => ipcRenderer.invoke('lims:getActiveProjectsCount'),
     
     // Team Management
+    getTeamMembers: () => ipcRenderer.invoke('lims:getTeamMembers'),
     getTeamMembersCount: () => ipcRenderer.invoke('lims:getTeamMembersCount'),
     
     // Sprint Management
@@ -326,6 +327,13 @@ contextBridge.exposeInMainWorld('api', {
     
     // Analytics
     getTaskMetrics: (period) => ipcRenderer.invoke('lims:getTaskMetrics', period),
+    
+    // Comments and Activities
+    getTaskComments: (taskId) => ipcRenderer.invoke('lims:getTaskComments', taskId),
+    addTaskComment: (taskId, commentData) => ipcRenderer.invoke('lims:addTaskComment', taskId, commentData),
+    updateTaskComment: (commentId, updates) => ipcRenderer.invoke('lims:updateTaskComment', commentId, updates),
+    deleteTaskComment: (commentId) => ipcRenderer.invoke('lims:deleteTaskComment', commentId),
+    getTaskActivities: (taskId) => ipcRenderer.invoke('lims:getTaskActivities', taskId),
     
     // Window Management
     closeDashboard: () => ipcRenderer.invoke('lims:closeDashboard'),

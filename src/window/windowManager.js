@@ -623,17 +623,26 @@ function createFeatureWindows(header, namesToCreate) {
             }
 
             case 'lims-dashboard': {
+                // Get screen dimensions for larger default size
+                const primaryDisplay = screen.getPrimaryDisplay();
+                const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+                
+                // Default to 90% of screen size for better modal visibility
+                const defaultWidth = Math.min(Math.floor(screenWidth * 0.9), 1600);
+                const defaultHeight = Math.min(Math.floor(screenHeight * 0.9), 1000);
+                
                 const limsDashboard = new BrowserWindow({
                     ...commonChildOptions,
-                    width: 900,
-                    height: 600,
-                    minWidth: 800,
-                    minHeight: 500,
+                    width: defaultWidth,
+                    height: defaultHeight,
+                    minWidth: 1000,
+                    minHeight: 700,
                     modal: false,
                     parent: undefined,
                     alwaysOnTop: false,
                     titleBarOverlay: false,
                     resizable: true,
+                    fullscreenable: true,
                 });
 
                 limsDashboard.setContentProtection(isContentProtectionOn);
@@ -657,6 +666,19 @@ function createFeatureWindows(header, namesToCreate) {
                 }
 
                 windowPool.set('lims-dashboard', limsDashboard);
+                
+                // Add fullscreen toggle handler
+                limsDashboard.webContents.on('before-input-event', (event, input) => {
+                    // Cmd+Shift+F (Mac) or Ctrl+Shift+F (Win/Linux) for fullscreen
+                    if (input.type === 'keyDown' && 
+                        input.key === 'F' && 
+                        input.shift && 
+                        (input.meta || input.control)) {
+                        event.preventDefault();
+                        toggleLimsFullscreen();
+                    }
+                });
+                
                 if (!app.isPackaged) {
                     limsDashboard.webContents.openDevTools({ mode: 'detach' });
                 }
@@ -858,6 +880,20 @@ const handleHeaderStateChanged = (state) => {
     internalBridge.emit('reregister-shortcuts');
 };
 
+const toggleLimsFullscreen = () => {
+    const limsDashboard = windowPool.get('lims-dashboard');
+    if (!limsDashboard || limsDashboard.isDestroyed()) {
+        console.warn('[WindowManager] LIMS dashboard not found or destroyed');
+        return false;
+    }
+    
+    const isFullScreen = limsDashboard.isFullScreen();
+    limsDashboard.setFullScreen(!isFullScreen);
+    
+    console.log(`[WindowManager] LIMS dashboard fullscreen toggled to: ${!isFullScreen}`);
+    return !isFullScreen;
+};
+
 
 module.exports = {
     createWindows,
@@ -875,4 +911,5 @@ module.exports = {
     getHeaderPosition,
     moveHeaderTo,
     adjustWindowHeight,
+    toggleLimsFullscreen,
 };

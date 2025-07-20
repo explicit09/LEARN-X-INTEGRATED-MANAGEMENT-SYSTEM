@@ -3,6 +3,7 @@ import { LIMSModule } from '../core/LIMSModule.js';
 import { TaskManagementDemo } from './TaskManagementDemo.js';
 import { ModalPortal } from '../utils/modalPortal.js';
 import { TaskSearchAndFilterIntegration } from './taskManagement/TaskSearchAndFilterIntegration.js';
+import { TaskDueDateModule } from './taskManagement/dueDate/TaskDueDateModule.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -1240,6 +1241,210 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     height: 400px;
                 }
             }
+
+            /* Due Date Styles */
+            .due-date-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 500;
+                white-space: nowrap;
+                border: 1px solid transparent;
+            }
+
+            .due-date-badge.today {
+                background: rgba(251, 191, 36, 0.2);
+                color: #fbbf24;
+                border-color: rgba(251, 191, 36, 0.3);
+            }
+
+            .due-date-badge.tomorrow {
+                background: rgba(96, 165, 250, 0.2);
+                color: #60a5fa;
+                border-color: rgba(96, 165, 250, 0.3);
+            }
+
+            .due-date-badge.this-week {
+                background: rgba(167, 139, 250, 0.2);
+                color: #a78bfa;
+                border-color: rgba(167, 139, 250, 0.3);
+            }
+
+            .due-date-badge.overdue {
+                background: rgba(248, 113, 113, 0.2);
+                color: #f87171;
+                border-color: rgba(248, 113, 113, 0.3);
+                animation: pulse-overdue 2s infinite;
+            }
+
+            .due-date-badge.future {
+                background: rgba(125, 211, 252, 0.2);
+                color: #7dd3fc;
+                border-color: rgba(125, 211, 252, 0.3);
+            }
+
+            @keyframes pulse-overdue {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+
+            .task-due-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                pointer-events: none;
+                border-radius: inherit;
+                opacity: 0;
+                transition: opacity 0.2s;
+            }
+
+            .task-card.overdue .task-due-overlay {
+                background: linear-gradient(135deg, 
+                    rgba(220, 38, 38, 0.1) 0%, 
+                    rgba(220, 38, 38, 0.05) 100%);
+                border: 2px solid rgba(220, 38, 38, 0.3);
+                opacity: 1;
+            }
+
+            .task-card.today .task-due-overlay {
+                background: linear-gradient(135deg, 
+                    rgba(251, 191, 36, 0.1) 0%, 
+                    rgba(251, 191, 36, 0.05) 100%);
+                border: 2px solid rgba(251, 191, 36, 0.3);
+                opacity: 1;
+            }
+
+            /* Quick Date Buttons */
+            .quick-date-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 8px;
+            }
+
+            .quick-date-btn {
+                background: var(--quick-date-bg, rgba(255, 255, 255, 0.1));
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+                color: var(--text-color, #e5e5e7);
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .quick-date-btn:hover {
+                background: var(--hover-background, rgba(255, 255, 255, 0.15));
+                border-color: var(--accent-color, #007aff);
+            }
+
+            /* Due Date Badge Styles */
+            .due-date-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 500;
+                white-space: nowrap;
+                border: 1px solid transparent;
+            }
+
+            .due-date-badge.today {
+                background: var(--due-today-bg, #fef3c7);
+                color: var(--due-today-text, #92400e);
+                border-color: var(--due-today-border, #fbbf24);
+            }
+
+            .due-date-badge.tomorrow {
+                background: var(--due-tomorrow-bg, #dbeafe);
+                color: var(--due-tomorrow-text, #1e40af);
+                border-color: var(--due-tomorrow-border, #60a5fa);
+            }
+
+            .due-date-badge.this-week {
+                background: var(--due-week-bg, #f3e8ff);
+                color: var(--due-week-text, #7c3aed);
+                border-color: var(--due-week-border, #a78bfa);
+            }
+
+            .due-date-badge.overdue {
+                background: var(--due-overdue-bg, #fee2e2);
+                color: var(--due-overdue-text, #dc2626);
+                border-color: var(--due-overdue-border, #f87171);
+                animation: pulse-overdue 2s infinite;
+            }
+
+            .due-date-badge.future {
+                background: var(--due-future-bg, #f0f9ff);
+                color: var(--due-future-text, #0369a1);
+                border-color: var(--due-future-border, #7dd3fc);
+            }
+
+            @keyframes pulse-overdue {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+
+            .due-date-icon {
+                width: 12px;
+                height: 12px;
+            }
+
+            /* Sort Controls Styles */
+            .sort-controls {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-left: 16px;
+            }
+
+            .sort-label {
+                font-size: 12px;
+                color: var(--text-muted, rgba(255, 255, 255, 0.6));
+                margin-right: 4px;
+            }
+
+            .sort-button {
+                background: transparent;
+                border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+                color: var(--text-color, #e5e5e7);
+                cursor: pointer;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                transition: all 0.2s;
+            }
+
+            .sort-button:hover {
+                background: var(--hover-background, rgba(255, 255, 255, 0.1));
+                border-color: var(--accent-color, #007aff);
+            }
+
+            .sort-button.active {
+                background: var(--accent-color, #007aff);
+                color: white;
+                border-color: var(--accent-color, #007aff);
+            }
+
+            .sort-icon {
+                width: 12px;
+                height: 12px;
+                transition: transform 0.2s;
+            }
+
+            .sort-icon.desc {
+                transform: rotate(180deg);
+            }
         `
     ];
 
@@ -1264,6 +1469,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         showQuickAddInput: { type: Boolean },
         quickAddStatus: { type: String },
         showTaskCreationModal: { type: Boolean },
+        sortBy: { type: String },
+        sortDirection: { type: String },
         modalId: { type: String },
         newTaskData: { type: Object },
         isCreatingTask: { type: Boolean },
@@ -1284,6 +1491,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.filterStatus = 'all';
         this.filterProject = 'all';
         this.selectedTask = null;
+        this.sortBy = 'created_at';
+        this.sortDirection = 'desc';
         this.commandPaletteOpen = false;
         this.selectedTasks = [];
         this.keyboardHint = '';
@@ -1787,6 +1996,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             status: 'todo',
             priority: 'medium',
             due_date: null,
+            assignee: '',
             assignee_id: null,
             project_id: this.projects[0]?.id || null,
             labels: [] // Always return empty array
@@ -1809,6 +2019,168 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             ...this.newTaskData,
             [field]: value
         };
+        this.requestUpdate();
+    }
+
+    handleQuickDateClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const button = event.currentTarget;
+        if (button.dataset.clear === 'true') {
+            this.updateNewTaskData('due_date', '');
+            return;
+        }
+        
+        const days = parseInt(button.dataset.days);
+        const today = new Date();
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + days);
+        
+        // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+        const dateString = targetDate.toISOString().slice(0, 16);
+        this.updateNewTaskData('due_date', dateString);
+        
+        // Update the input field in the modal
+        const dueDateInput = document.querySelector('#modal-task-creation input[data-field="due_date"]');
+        if (dueDateInput) {
+            dueDateInput.value = dateString;
+        }
+    }
+
+    handleQuickDateClickEdit(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const button = event.currentTarget;
+        if (button.dataset.clear === 'true') {
+            this.editingTask.due_date = '';
+            return;
+        }
+        
+        const days = parseInt(button.dataset.days);
+        const today = new Date();
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + days);
+        
+        // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+        const dateString = targetDate.toISOString().slice(0, 16);
+        this.editingTask.due_date = dateString;
+        
+        // Update the input field in the modal
+        const dueDateInput = document.querySelector('#modal-task-edit input[data-field="due_date"]');
+        if (dueDateInput) {
+            dueDateInput.value = dateString;
+        }
+    }
+
+    renderDueDateBadge(task) {
+        if (!task.due_date) {
+            return '';
+        }
+        
+        const status = TaskDueDateModule.getDueDateStatus(task.due_date);
+        const text = TaskDueDateModule.formatDueDate(task.due_date);
+        const icon = this.getDueDateIcon(status);
+
+        return html`
+            <span class="due-date-badge ${status}">
+                ${icon}
+                ${text}
+            </span>
+        `;
+    }
+
+    getDueDateIcon(status) {
+        const icons = {
+            'overdue': html`<svg class="due-date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12,6 12,12 16,14"></polyline>
+            </svg>`,
+            'today': html`<svg class="due-date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12,6 12,12 16,14"></polyline>
+            </svg>`,
+            'tomorrow': html`<svg class="due-date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>`,
+            'this-week': html`<svg class="due-date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>`,
+            'future': html`<svg class="due-date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>`,
+            'no-due-date': ''
+        };
+        return icons[status] || '';
+    }
+
+    renderDueDateOverlay(task) {
+        const status = TaskDueDateModule.getDueDateStatus(task.due_date);
+        if (status === 'overdue' || status === 'today') {
+            return html`<div class="task-due-overlay"></div>`;
+        }
+        return '';
+    }
+
+    sortTasks(tasks) {
+        if (!this.sortBy || this.sortBy === 'none') {
+            return tasks;
+        }
+
+        const sorted = [...tasks].sort((a, b) => {
+            let aVal, bVal;
+
+            switch (this.sortBy) {
+                case 'due_date':
+                    aVal = a.due_date ? new Date(a.due_date) : new Date('9999-12-31');
+                    bVal = b.due_date ? new Date(b.due_date) : new Date('9999-12-31');
+                    break;
+                case 'priority':
+                    const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+                    aVal = priorityOrder[a.priority] || 0;
+                    bVal = priorityOrder[b.priority] || 0;
+                    break;
+                case 'title':
+                    aVal = a.title?.toLowerCase() || '';
+                    bVal = b.title?.toLowerCase() || '';
+                    break;
+                case 'status':
+                    const statusOrder = { todo: 1, in_progress: 2, review: 3, done: 4 };
+                    aVal = statusOrder[a.status] || 0;
+                    bVal = statusOrder[b.status] || 0;
+                    break;
+                case 'created_at':
+                default:
+                    aVal = new Date(a.created_at || a.id);
+                    bVal = new Date(b.created_at || b.id);
+                    break;
+            }
+
+            if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return sorted;
+    }
+
+    setSortBy(sortType) {
+        if (this.sortBy === sortType) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortBy = sortType;
+            this.sortDirection = sortType === 'due_date' ? 'asc' : 'desc';
+        }
         this.requestUpdate();
     }
     
@@ -1852,6 +2224,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             'input[data-field], textarea[data-field], select[data-field]': {
                 'input': (e) => this.updateNewTaskData(e.target.dataset.field, e.target.value),
                 'change': (e) => this.updateNewTaskData(e.target.dataset.field, e.target.value)
+            },
+            '.quick-date-btn': {
+                'click': (e) => this.handleQuickDateClick(e)
             },
             '.priority-option': {
                 'click': (e) => {
@@ -2247,7 +2622,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
             </div>
             
-            <!-- Due Date and Project Row -->
+            <!-- Due Date and Assignee Row -->
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Due Date</label>
@@ -2257,8 +2632,29 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         value="${this.newTaskData.due_date || ''}"
                         data-field="due_date"
                     />
+                    <div class="quick-date-buttons">
+                        <button type="button" class="quick-date-btn" data-days="0">Today</button>
+                        <button type="button" class="quick-date-btn" data-days="1">Tomorrow</button>
+                        <button type="button" class="quick-date-btn" data-days="7">Next Week</button>
+                        <button type="button" class="quick-date-btn" data-clear="true">Clear</button>
+                    </div>
                 </div>
                 
+                <div class="form-group">
+                    <label class="form-label">Assignee</label>
+                    <select class="form-select" data-field="assignee" value="${this.newTaskData.assignee || ''}">
+                        <option value="">Unassigned</option>
+                        <option value="me" ${this.newTaskData.assignee === 'me' ? 'selected' : ''}>Assign to me</option>
+                        <option value="john.doe" ${this.newTaskData.assignee === 'john.doe' ? 'selected' : ''}>John Doe</option>
+                        <option value="jane.smith" ${this.newTaskData.assignee === 'jane.smith' ? 'selected' : ''}>Jane Smith</option>
+                        <option value="lab.tech" ${this.newTaskData.assignee === 'lab.tech' ? 'selected' : ''}>Lab Technician</option>
+                        <option value="analyst" ${this.newTaskData.assignee === 'analyst' ? 'selected' : ''}>Analyst</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Project Row -->
+            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Project</label>
                     <select class="form-select" data-field="project_id" value="${this.newTaskData.project_id || ''}">
@@ -2269,6 +2665,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             </option>
                         `).join('')}
                     </select>
+                </div>
+                
+                <div class="form-group">
+                    <!-- Empty for spacing -->
                 </div>
             </div>
             
@@ -2305,12 +2705,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 project_id: this.newTaskData.project_id || null
             };
             
-            // Format dates properly - convert from datetime-local to ISO format
+            // Format dates properly - convert from datetime-local to date-only format (YYYY-MM-DD)
             if (this.newTaskData.due_date) {
                 const dueDate = new Date(this.newTaskData.due_date);
                 // Check if date is valid and reasonable (between 1900 and 2100)
                 if (!isNaN(dueDate.getTime()) && dueDate.getFullYear() > 1900 && dueDate.getFullYear() < 2100) {
-                    taskData.due_date = dueDate.toISOString();
+                    // Format as YYYY-MM-DD for date column
+                    taskData.due_date = dueDate.toISOString().split('T')[0];
                 } else {
                     taskData.due_date = null;
                 }
@@ -2493,9 +2894,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     // Render methods
     renderModuleContent() {
         // Get filtered tasks if integration is active
-        const displayTasks = TaskSearchAndFilterIntegration.hasActiveFilters() 
+        const hasFilters = TaskSearchAndFilterIntegration.hasActiveFilters();
+        let displayTasks = hasFilters 
             ? TaskSearchAndFilterIntegration.getFilteredTasks(this.tasks)
             : this.tasks;
+            
+        // Apply sorting
+        displayTasks = this.sortTasks(displayTasks);
+            
+        console.log('[renderModuleContent] Has filters:', hasFilters, 'Displaying:', displayTasks.length, 'of', this.tasks.length, 'tasks');
             
         return html`
             <div class="task-management-container">
@@ -2560,6 +2967,46 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             @click=${() => this.currentView = 'list'}
                         >
                             List
+                        </button>
+                    </div>
+
+                    <div class="sort-controls">
+                        <span class="sort-label">Sort:</span>
+                        <button 
+                            class="sort-button ${this.sortBy === 'due_date' ? 'active' : ''}"
+                            @click=${() => this.setSortBy('due_date')}
+                            title="Sort by due date"
+                        >
+                            Due Date
+                            ${this.sortBy === 'due_date' ? html`
+                                <svg class="sort-icon ${this.sortDirection === 'desc' ? 'desc' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6,9 12,15 18,9"></polyline>
+                                </svg>
+                            ` : ''}
+                        </button>
+                        <button 
+                            class="sort-button ${this.sortBy === 'priority' ? 'active' : ''}"
+                            @click=${() => this.setSortBy('priority')}
+                            title="Sort by priority"
+                        >
+                            Priority
+                            ${this.sortBy === 'priority' ? html`
+                                <svg class="sort-icon ${this.sortDirection === 'desc' ? 'desc' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6,9 12,15 18,9"></polyline>
+                                </svg>
+                            ` : ''}
+                        </button>
+                        <button 
+                            class="sort-button ${this.sortBy === 'created_at' ? 'active' : ''}"
+                            @click=${() => this.setSortBy('created_at')}
+                            title="Sort by creation date"
+                        >
+                            Created
+                            ${this.sortBy === 'created_at' ? html`
+                                <svg class="sort-icon ${this.sortDirection === 'desc' ? 'desc' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6,9 12,15 18,9"></polyline>
+                                </svg>
+                            ` : ''}
                         </button>
                     </div>
                     
@@ -2677,10 +3124,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     renderDraggableTaskCard(task) {
         const isSelected = this.selectedTasks.includes(task.id);
+        const dueDateStatus = TaskDueDateModule.getDueDateStatus(task.due_date);
         
         return html`
             <div 
-                class="task-card ${isSelected ? 'selected' : ''}"
+                class="task-card ${isSelected ? 'selected' : ''} ${dueDateStatus}"
                 draggable="true"
                 tabindex="0"
                 data-task-id="${task.id}"
@@ -2726,6 +3174,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </div>
                     ` : ''}
                     
+                    ${this.renderDueDateBadge(task)}
+                    
                     ${task.assignee_id ? html`
                         <div class="task-assignee">
                             ${task.assignee_id.charAt(0).toUpperCase()}
@@ -2741,9 +3191,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </svg>
                     </button>
                 </div>
+                
+                <!-- Due date overlay for overdue/urgent tasks -->
+                ${this.renderDueDateOverlay(task)}
             </div>
         `;
     }
+
 
     // Enhanced drag and drop handlers with animations and multi-select
     handleDragStart(event, task) {
@@ -3010,6 +3464,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     this.editingTask[e.target.dataset.field] = e.target.value;
                 }
             },
+            '.quick-date-btn': {
+                'click': (e) => this.handleQuickDateClickEdit(e)
+            },
             '.priority-option': {
                 'click': (e) => {
                     const priority = e.currentTarget.dataset.priority;
@@ -3045,6 +3502,17 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         const taskToUpdate = { ...this.editingTask };
         const taskId = taskToUpdate.id;
         const taskTitle = taskToUpdate.title;
+        
+        // Format due_date properly - convert to date-only format (YYYY-MM-DD)
+        if (taskToUpdate.due_date) {
+            const dueDate = new Date(taskToUpdate.due_date);
+            if (!isNaN(dueDate.getTime()) && dueDate.getFullYear() > 1900 && dueDate.getFullYear() < 2100) {
+                // Format as YYYY-MM-DD for date column
+                taskToUpdate.due_date = dueDate.toISOString().split('T')[0];
+            } else {
+                taskToUpdate.due_date = null;
+            }
+        }
         
         try {
             // Update task via API
@@ -3202,9 +3670,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     <input 
                         type="datetime-local" 
                         class="form-input"
-                        value="${task.due_date || ''}"
+                        value="${task.due_date ? new Date(task.due_date).toISOString().slice(0, 16) : ''}"
                         data-field="due_date"
                     />
+                    <div class="quick-date-buttons">
+                        <button type="button" class="quick-date-btn" data-days="0">Today</button>
+                        <button type="button" class="quick-date-btn" data-days="1">Tomorrow</button>
+                        <button type="button" class="quick-date-btn" data-days="7">Next Week</button>
+                        <button type="button" class="quick-date-btn" data-clear="true">Clear</button>
+                    </div>
                 </div>
                 
                 <div class="form-group">

@@ -325,7 +325,7 @@ export class TaskSearchModule extends LitElement {
         // Search operators
         const operators = [
             { text: 'status:todo', hint: 'Tasks in todo status' },
-            { text: 'status:in-progress', hint: 'Tasks in progress' },
+            { text: 'status:in_progress', hint: 'Tasks in progress' },
             { text: 'status:done', hint: 'Completed tasks' },
             { text: 'priority:high', hint: 'High priority tasks' },
             { text: 'assignee:me', hint: 'Tasks assigned to you' },

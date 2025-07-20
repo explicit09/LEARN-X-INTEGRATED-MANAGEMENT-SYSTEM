@@ -113,6 +113,12 @@ export const TASK_EVENTS = {
     TASK_UPDATED: 'task:updated',
     TASK_DELETED: 'task:deleted',
     TASKS_REFRESHED: 'tasks:refreshed',
+    TASKS_SORT_CHANGED: 'tasks:sortChanged',
+    
+    // Due date events
+    DUE_DATE_SET: 'dueDate:set',
+    DUE_DATE_CLEARED: 'dueDate:cleared',
+    OVERDUE_TASKS_FOUND: 'dueDate:overdue',
     
     // UI events
     VIEW_CHANGED: 'ui:viewChanged',

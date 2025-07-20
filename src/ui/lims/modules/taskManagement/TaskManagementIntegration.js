@@ -74,6 +74,7 @@ export class TaskManagementIntegration {
      * Handle filter changes
      */
     handleFilterChanged(detail) {
+        console.log('[Integration] Filter changed:', detail.filters);
         this.activeFilters = detail.filters || {};
         this.applySearchAndFilters();
     }
@@ -123,11 +124,19 @@ export class TaskManagementIntegration {
 
         // Apply filters
         if (this.activeFilters.status && this.activeFilters.status.length > 0) {
+            console.log('[Integration] Filtering by status:', this.activeFilters.status);
+            console.log('[Integration] Available task statuses:', [...new Set(filtered.map(t => t.status))]);
+            const beforeCount = filtered.length;
             filtered = filtered.filter(task => this.activeFilters.status.includes(task.status));
+            console.log('[Integration] Status filter: ', beforeCount, '->', filtered.length, 'tasks');
         }
 
         if (this.activeFilters.priority && this.activeFilters.priority.length > 0) {
+            console.log('[Integration] Filtering by priority:', this.activeFilters.priority);
+            console.log('[Integration] Available task priorities:', [...new Set(filtered.map(t => t.priority))]);
+            const beforeCount = filtered.length;
             filtered = filtered.filter(task => this.activeFilters.priority.includes(task.priority));
+            console.log('[Integration] Priority filter: ', beforeCount, '->', filtered.length, 'tasks');
         }
 
         if (this.activeFilters.labels && this.activeFilters.labels.length > 0) {
@@ -153,9 +162,11 @@ export class TaskManagementIntegration {
 
         this.filteredTasks = filtered;
         
-        // Update host module with filtered tasks
-        if (this.hostModule && this.hostModule.updateDisplayedTasks) {
-            this.hostModule.updateDisplayedTasks(this.filteredTasks);
+        console.log('[Integration] Applied filters, showing', filtered.length, 'of', this.originalTasks.length, 'tasks');
+        
+        // Force re-render of host module with filtered tasks
+        if (this.hostModule) {
+            this.hostModule.requestUpdate();
         }
     }
 

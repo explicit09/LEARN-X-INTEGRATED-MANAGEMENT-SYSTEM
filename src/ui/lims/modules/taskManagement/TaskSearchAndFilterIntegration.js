@@ -65,10 +65,10 @@ export class TaskSearchAndFilterIntegration {
             return false;
         }
         
-        return this.integration.searchQuery || 
+        return !!(this.integration.searchQuery || 
                Object.values(this.integration.activeFilters).some(v => 
                    Array.isArray(v) ? v.length > 0 : v !== null
-               );
+               ));
     }
 
     /**

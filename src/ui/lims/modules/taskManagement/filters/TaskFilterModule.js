@@ -193,7 +193,7 @@ export class TaskFilterModule extends LitElement {
         /* Priority badges */
         .priority-urgent { background: var(--priority-urgent, #ef4444); }
         .priority-high { background: var(--priority-high, #f97316); }
-        .priority-normal { background: var(--priority-normal, #3b82f6); }
+        .priority-medium { background: var(--priority-medium, #3b82f6); }
         .priority-low { background: var(--priority-low, #6b7280); }
 
         /* Date picker */
@@ -350,14 +350,14 @@ export class TaskFilterModule extends LitElement {
         this.taskCounts = {
             status: {
                 todo: tasks.filter(t => t.status === 'todo').length,
-                'in-progress': tasks.filter(t => t.status === 'in-progress').length,
+                'in_progress': tasks.filter(t => t.status === 'in_progress').length,
                 review: tasks.filter(t => t.status === 'review').length,
                 done: tasks.filter(t => t.status === 'done').length
             },
             priority: {
                 urgent: tasks.filter(t => t.priority === 'urgent').length,
                 high: tasks.filter(t => t.priority === 'high').length,
-                normal: tasks.filter(t => t.priority === 'normal').length,
+                medium: tasks.filter(t => t.priority === 'medium').length,
                 low: tasks.filter(t => t.priority === 'low').length
             }
         };
@@ -460,7 +460,7 @@ export class TaskFilterModule extends LitElement {
             case 'active':
                 this.activeFilters = {
                     ...this.activeFilters,
-                    status: ['todo', 'in-progress', 'review']
+                    status: ['todo', 'in_progress', 'review']
                 };
                 break;
         }
@@ -573,7 +573,7 @@ export class TaskFilterModule extends LitElement {
     }
 
     renderStatusOptions() {
-        const statuses = ['todo', 'in-progress', 'review', 'done'];
+        const statuses = ['todo', 'in_progress', 'review', 'done'];
         
         return html`
             <div class="filter-section">
@@ -584,7 +584,7 @@ export class TaskFilterModule extends LitElement {
                     >
                         <div class="filter-checkbox"></div>
                         <span class="filter-label">${this.formatLabel(status)}</span>
-                        <span class="filter-badge status-${status}">
+                        <span class="filter-badge status-${status.replace('_', '-')}">
                             ${this.taskCounts.status?.[status] || 0}
                         </span>
                     </div>
@@ -594,7 +594,7 @@ export class TaskFilterModule extends LitElement {
     }
 
     renderPriorityOptions() {
-        const priorities = ['urgent', 'high', 'normal', 'low'];
+        const priorities = ['urgent', 'high', 'medium', 'low'];
         
         return html`
             <div class="filter-section">
@@ -749,12 +749,12 @@ export class TaskFilterModule extends LitElement {
     formatLabel(value) {
         const labelMap = {
             'todo': 'To Do',
-            'in-progress': 'In Progress',
+            'in_progress': 'In Progress',
             'review': 'Review',
             'done': 'Done',
             'urgent': 'Urgent',
             'high': 'High',
-            'normal': 'Normal',
+            'medium': 'Medium',
             'low': 'Low',
             'me': 'Me',
             'unassigned': 'Unassigned'

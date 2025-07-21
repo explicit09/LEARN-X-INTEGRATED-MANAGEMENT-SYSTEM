@@ -136,6 +136,12 @@ module.exports = {
     ipcMain.handle('lims:updateTaskComment', async (event, commentId, updates) => await limsService.updateTaskComment(commentId, updates));
     ipcMain.handle('lims:deleteTaskComment', async (event, commentId) => await limsService.deleteTaskComment(commentId));
     ipcMain.handle('lims:getTaskActivities', async (event, taskId) => await limsService.getTaskActivities(taskId));
+    
+    // Task Dependencies
+    ipcMain.handle('lims:getTaskDependencies', async (event, taskId) => await limsService.getTaskDependencies(taskId));
+    ipcMain.handle('lims:addTaskDependency', async (event, taskId, dependsOnTaskId) => await limsService.addTaskDependency(taskId, dependsOnTaskId));
+    ipcMain.handle('lims:removeTaskDependency', async (event, dependencyId) => await limsService.removeTaskDependency(dependencyId));
+    ipcMain.handle('lims:canCompleteTask', async (event, taskId) => await limsService.canCompleteTask(taskId));
 
     // ModelStateService
     ipcMain.handle('model:validate-key', async (e, { provider, key }) => await modelStateService.handleValidateKey(provider, key));

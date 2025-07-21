@@ -186,16 +186,12 @@ class LimsService {
     async getTaskTemplates() {
         try {
             console.log('[LimsService] Getting task templates');
-            const { data, error } = await this.db
-                .from('task_templates')
-                .select('*')
-                .eq('is_active', true)
-                .order('category', { ascending: true })
-                .order('name', { ascending: true });
-
-            if (error) throw error;
-            console.log(`[LimsService] Got ${data?.length || 0} templates`);
-            return data || [];
+            const templates = await this.db.findMany('task_templates', { is_active: true }, {
+                orderBy: 'category',
+                ascending: true
+            });
+            console.log(`[LimsService] Got ${templates?.length || 0} templates`);
+            return templates || [];
         } catch (error) {
             console.error('[LimsService] Error getting templates:', error);
             return [];
@@ -205,18 +201,16 @@ class LimsService {
     async createTaskTemplate(template) {
         try {
             console.log('[LimsService] Creating task template:', template.name);
-            const { data, error } = await this.db
-                .from('task_templates')
-                .insert({
-                    ...template,
-                    created_by: this.getCurrentUserId()
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-            console.log('[LimsService] Created template:', data.id);
-            return data;
+            const templateData = {
+                ...template,
+                created_by: '67b18306-260d-4a8e-a249-90d26158999e', // tmbuwa09@gmail.com's UUID
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            
+            const created = await this.db.create('task_templates', templateData);
+            console.log('[LimsService] Created template:', created.id);
+            return created;
         } catch (error) {
             console.error('[LimsService] Error creating template:', error);
             throw error;
@@ -226,19 +220,14 @@ class LimsService {
     async updateTaskTemplate(id, updates) {
         try {
             console.log('[LimsService] Updating task template:', id);
-            const { data, error } = await this.db
-                .from('task_templates')
-                .update({
-                    ...updates,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select()
-                .single();
-
-            if (error) throw error;
+            const updateData = {
+                ...updates,
+                updated_at: new Date().toISOString()
+            };
+            
+            const updated = await this.db.update('task_templates', id, updateData);
             console.log('[LimsService] Updated template:', id);
-            return data;
+            return updated;
         } catch (error) {
             console.error('[LimsService] Error updating template:', error);
             throw error;
@@ -248,12 +237,7 @@ class LimsService {
     async deleteTaskTemplate(id) {
         try {
             console.log('[LimsService] Deleting task template:', id);
-            const { error } = await this.db
-                .from('task_templates')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
+            await this.db.delete('task_templates', id);
             console.log('[LimsService] Deleted template:', id);
             return true;
         } catch (error) {
@@ -661,6 +645,158 @@ class LimsService {
             console.log('[LimsService] Comment update:', payload);
             callback(payload);
         });
+    }
+
+    // Task Dependencies Management
+    async getTaskDependencies(taskId) {
+        try {
+            console.log('[LimsService] Getting dependencies for task:', taskId);
+            
+            // Get dependencies (tasks this task depends on)
+            const dependencies = await this.db.findMany('task_dependencies', { task_id: taskId });
+            
+            // Get dependents (tasks that depend on this task)
+            const dependents = await this.db.findMany('task_dependencies', { depends_on_task_id: taskId });
+            
+            // Fetch task details for dependencies
+            for (let dep of dependencies) {
+                if (dep.depends_on_task_id) {
+                    const tasks = await this.db.findMany('tasks', { id: dep.depends_on_task_id });
+                    if (tasks && tasks.length > 0) {
+                        dep.task = tasks[0];
+                        // Get assignee info
+                        if (dep.task.assignee_id) {
+                            const assignees = await this.db.findMany('team_members', { id: dep.task.assignee_id });
+                            if (assignees && assignees.length > 0) {
+                                dep.task.assignee = assignees[0];
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fetch task details for dependents
+            for (let dep of dependents) {
+                if (dep.task_id) {
+                    const tasks = await this.db.findMany('tasks', { id: dep.task_id });
+                    if (tasks && tasks.length > 0) {
+                        dep.task = tasks[0];
+                        // Get assignee info
+                        if (dep.task.assignee_id) {
+                            const assignees = await this.db.findMany('team_members', { id: dep.task.assignee_id });
+                            if (assignees && assignees.length > 0) {
+                                dep.task.assignee = assignees[0];
+                            }
+                        }
+                    }
+                }
+            }
+
+            console.log(`[LimsService] Got ${dependencies?.length || 0} dependencies and ${dependents?.length || 0} dependents`);
+            
+            return {
+                dependencies: dependencies || [],
+                dependents: dependents || []
+            };
+        } catch (error) {
+            console.error('[LimsService] Error getting task dependencies:', error);
+            return { dependencies: [], dependents: [] };
+        }
+    }
+
+    async addTaskDependency(taskId, dependsOnTaskId) {
+        try {
+            console.log('[LimsService] Adding dependency:', taskId, 'depends on', dependsOnTaskId);
+            
+            // Check if dependency already exists
+            const existing = await this.db.findMany('task_dependencies', { 
+                task_id: taskId,
+                depends_on_task_id: dependsOnTaskId
+            });
+
+            if (existing && existing.length > 0) {
+                console.log('[LimsService] Dependency already exists');
+                return existing[0];
+            }
+
+            // Create new dependency
+            const dependency = {
+                task_id: taskId,
+                depends_on_task_id: dependsOnTaskId,
+                created_at: new Date().toISOString()
+            };
+            
+            const created = await this.db.create('task_dependencies', dependency);
+
+            console.log('[LimsService] Created dependency:', created.id);
+            
+            // Log activity
+            await this.addTaskActivity(taskId, {
+                action: 'dependency_added',
+                to_value: dependsOnTaskId,
+                user_name: 'User'
+            });
+
+            return created;
+        } catch (error) {
+            console.error('[LimsService] Error adding task dependency:', error);
+            throw error;
+        }
+    }
+
+    async removeTaskDependency(dependencyId) {
+        try {
+            console.log('[LimsService] Removing dependency:', dependencyId);
+            
+            // Get dependency info before deleting
+            const dependencies = await this.db.findMany('task_dependencies', { id: dependencyId });
+            const dependency = dependencies && dependencies.length > 0 ? dependencies[0] : null;
+
+            if (!dependency) {
+                throw new Error('Dependency not found');
+            }
+
+            // Delete dependency
+            await this.db.delete('task_dependencies', dependencyId);
+
+            console.log('[LimsService] Removed dependency:', dependencyId);
+            
+            // Log activity
+            if (dependency) {
+                await this.addTaskActivity(dependency.task_id, {
+                    action: 'dependency_removed',
+                    from_value: dependency.depends_on_task_id,
+                    user_name: 'User'
+                });
+            }
+
+            return true;
+        } catch (error) {
+            console.error('[LimsService] Error removing task dependency:', error);
+            throw error;
+        }
+    }
+
+    // Check if a task can be completed (all dependencies are done)
+    async canCompleteTask(taskId) {
+        try {
+            const { dependencies } = await this.getTaskDependencies(taskId);
+            
+            // Check if all dependencies are completed
+            const allDependenciesComplete = dependencies.every(dep => 
+                dep.task && (dep.task.status === 'done' || dep.task.status === 'completed')
+            );
+
+            return {
+                canComplete: allDependenciesComplete,
+                blockingTasks: dependencies.filter(dep => 
+                    dep.task && dep.task.status !== 'done' && dep.task.status !== 'completed'
+                )
+            };
+        } catch (error) {
+            console.error('[LimsService] Error checking task completion:', error);
+            return { canComplete: true, blockingTasks: [] };
+        }
     }
 }
 

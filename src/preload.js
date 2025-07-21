@@ -341,6 +341,12 @@ contextBridge.exposeInMainWorld('api', {
     deleteTaskComment: (commentId) => ipcRenderer.invoke('lims:deleteTaskComment', commentId),
     getTaskActivities: (taskId) => ipcRenderer.invoke('lims:getTaskActivities', taskId),
     
+    // Task Dependencies
+    getTaskDependencies: (taskId) => ipcRenderer.invoke('lims:getTaskDependencies', taskId),
+    addTaskDependency: (taskId, dependsOnTaskId) => ipcRenderer.invoke('lims:addTaskDependency', taskId, dependsOnTaskId),
+    removeTaskDependency: (dependencyId) => ipcRenderer.invoke('lims:removeTaskDependency', dependencyId),
+    canCompleteTask: (taskId) => ipcRenderer.invoke('lims:canCompleteTask', taskId),
+    
     // Window Management
     closeDashboard: () => ipcRenderer.invoke('lims:closeDashboard'),
     

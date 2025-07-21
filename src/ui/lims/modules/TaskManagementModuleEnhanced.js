@@ -16,9 +16,11 @@ import './taskManagement/sprint/TaskSprintModule.js';
 import './taskManagement/labels/TaskLabelModule.js';
 import './taskManagement/templates/TaskTemplateModule.js';
 import './taskManagement/dependencies/TaskDependenciesModule.js';
+import './taskManagement/editor/RichTextEditor.js';
 import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
 import { optimisticUpdateManager } from './taskManagement/utils/OptimisticUpdateManager.js';
 import { undoRedoManager } from './taskManagement/utils/UndoRedoManager.js';
+import { MarkdownRenderer } from './taskManagement/utils/MarkdownRenderer.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -2044,7 +2046,21 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             return;
         }
 
-        // Undo/Redo shortcuts
+        // Check if user is typing in any input field
+        const activeElement = this.shadowRoot?.activeElement || document.activeElement;
+        const isTyping = activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.contentEditable === 'true' ||
+            activeElement.closest('input, textarea, [contenteditable="true"]')
+        );
+        
+        // Don't handle shortcuts if typing
+        if (isTyping) {
+            return;
+        }
+
+        // Undo/Redo shortcuts (only when not typing)
         if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
             event.preventDefault();
             this.performUndo();
@@ -2056,15 +2072,6 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             this.performRedo();
             return;
         }
-
-        // Check if user is typing in any input field
-        const activeElement = this.shadowRoot?.activeElement || document.activeElement;
-        const isTyping = activeElement && (
-            activeElement.tagName === 'INPUT' ||
-            activeElement.tagName === 'TEXTAREA' ||
-            activeElement.contentEditable === 'true' ||
-            activeElement.closest('input, textarea, [contenteditable="true"]')
-        );
         
         // Also check if task creation modal is open
         if (isTyping || this.showTaskCreationModal) {
@@ -2394,40 +2401,75 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     setupUndoRedoHandlers() {
         // Register handlers for different action types
         undoRedoManager.registerChangeHandler('create_task', async (targetState, sourceState, metadata, isUndo) => {
-            if (isUndo) {
-                // Undo create = delete
-                await this.deleteTaskWithoutUndo(targetState.id);
-            } else {
-                // Redo create = recreate
-                await this.createTaskWithoutUndo(targetState);
+            try {
+                if (isUndo) {
+                    // Undo create = delete
+                    await this.deleteTaskWithoutUndo(targetState.id);
+                } else {
+                    // Redo create = recreate
+                    await this.createTaskWithoutUndo(targetState);
+                }
+            } catch (error) {
+                console.error('[UndoRedo] Error in create_task handler:', error);
+                throw error;
             }
         });
 
         undoRedoManager.registerChangeHandler('update_task', async (targetState, sourceState, metadata, isUndo) => {
-            // Apply the target state
-            await this.updateTaskWithoutUndo(targetState.id, targetState);
+            try {
+                // Apply the target state - only update the changed fields
+                const updates = {};
+                if (targetState.status !== sourceState?.status) updates.status = targetState.status;
+                if (targetState.title !== sourceState?.title) updates.title = targetState.title;
+                if (targetState.priority !== sourceState?.priority) updates.priority = targetState.priority;
+                if (targetState.assignee_id !== sourceState?.assignee_id) updates.assignee_id = targetState.assignee_id;
+                
+                if (Object.keys(updates).length > 0) {
+                    await this.updateTaskWithoutUndo(targetState.id, updates);
+                }
+            } catch (error) {
+                console.error('[UndoRedo] Error in update_task handler:', error);
+                throw error;
+            }
         });
 
         undoRedoManager.registerChangeHandler('delete_task', async (targetState, sourceState, metadata, isUndo) => {
-            if (isUndo) {
-                // Undo delete = recreate
-                await this.createTaskWithoutUndo(targetState);
-            } else {
-                // Redo delete = delete again
-                await this.deleteTaskWithoutUndo(sourceState.id);
+            try {
+                if (isUndo) {
+                    // Undo delete = recreate
+                    await this.createTaskWithoutUndo(targetState);
+                } else {
+                    // Redo delete = delete again
+                    await this.deleteTaskWithoutUndo(sourceState.id);
+                }
+            } catch (error) {
+                console.error('[UndoRedo] Error in delete_task handler:', error);
+                throw error;
             }
         });
 
         undoRedoManager.registerChangeHandler('bulk_update', async (targetState, sourceState, metadata, isUndo) => {
-            // Apply target state to all tasks
-            const updatePromises = targetState.map(task => 
-                this.updateTaskWithoutUndo(task.id, task)
-            );
-            await Promise.all(updatePromises);
+            try {
+                // Apply target state to all tasks
+                const updatePromises = targetState.map(task => 
+                    this.updateTaskWithoutUndo(task.id, task).catch(err => {
+                        console.error(`[UndoRedo] Failed to update task ${task.id}:`, err);
+                    })
+                );
+                await Promise.all(updatePromises);
+            } catch (error) {
+                console.error('[UndoRedo] Error in bulk_update handler:', error);
+                throw error;
+            }
         });
 
         undoRedoManager.registerChangeHandler('move_task', async (targetState, sourceState, metadata, isUndo) => {
-            await this.updateTaskWithoutUndo(targetState.id, { status: targetState.status });
+            try {
+                await this.updateTaskWithoutUndo(targetState.id, { status: targetState.status });
+            } catch (error) {
+                console.error('[UndoRedo] Error in move_task handler:', error);
+                throw error;
+            }
         });
     }
 
@@ -4041,7 +4083,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 
                 <div class="task-title">${task.title}</div>
                 ${task.description ? html`
-                    <div class="task-description">${task.description}</div>
+                    <div class="task-description">${MarkdownRenderer.getPreview(task.description, 100)}</div>
                 ` : ''}
                 
                 <div class="task-meta">
@@ -4929,7 +4971,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             <div class="list-col" style="flex: 3;">
                                 <div class="task-title">${task.title}</div>
                                 ${task.description ? html`
-                                    <div class="task-description">${task.description}</div>
+                                    <div class="task-description">${MarkdownRenderer.getPreview(task.description, 150)}</div>
                                 ` : ''}
                             </div>
                             <div class="list-col" style="flex: 1;">
@@ -5237,12 +5279,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         <!-- Description -->
                         <div class="form-group">
                             <label class="form-label">Description</label>
-                            <textarea 
-                                class="form-textarea" 
-                                placeholder="Add a more detailed description..."
+                            <rich-text-editor
                                 .value=${this.newTaskData.description || ''}
+                                placeholder="Add a more detailed description... (Markdown supported)"
                                 @input=${(e) => this.updateNewTaskData('description', e.target.value)}
-                            ></textarea>
+                            ></rich-text-editor>
                         </div>
                         
                         <!-- Priority and Status Row -->

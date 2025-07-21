@@ -1,6 +1,8 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
 import { taskEventBus, TASK_EVENTS } from '../utils/TaskEventBus.js';
 import './MentionSuggestionDropdown.js';
+import '../editor/RichTextEditor.js';
+import { MarkdownRenderer } from '../utils/MarkdownRenderer.js';
 
 /**
  * TaskCommentsModule - Comments and activity history for tasks
@@ -401,7 +403,9 @@ export class TaskCommentsModule extends LitElement {
         showMentions: { type: Boolean },
         mentionQuery: { type: String },
         mentionSuggestions: { type: Array },
-        mentionStartIndex: { type: Number }
+        mentionStartIndex: { type: Number },
+        useRichText: { type: Boolean },
+        commentText: { type: String }
     };
 
     constructor() {
@@ -417,6 +421,8 @@ export class TaskCommentsModule extends LitElement {
         this.mentionQuery = '';
         this.mentionSuggestions = [];
         this.mentionStartIndex = -1;
+        this.useRichText = false;
+        this.commentText = '';
     }
 
     connectedCallback() {
@@ -547,6 +553,35 @@ export class TaskCommentsModule extends LitElement {
             });
         } catch (error) {
             console.error('[TaskCommentsModule] Error adding comment:', error);
+        }
+    }
+
+    async handleAddRichComment() {
+        const content = this.commentText.trim();
+
+        if (!content || !this.taskId) return;
+
+        try {
+            const comment = await window.api.lims.addTaskComment(this.taskId, {
+                content,
+                author_id: this.currentUser?.uid,
+                author_name: this.currentUser?.displayName || this.currentUser?.email || 'tmbuwa09@gmail.com',
+                created_at: new Date().toISOString()
+            });
+
+            // Clear input
+            this.commentText = '';
+
+            // Add to local state
+            this.comments = [...this.comments, comment];
+
+            // Emit event
+            taskEventBus.emit(TASK_EVENTS.COMMENT_ADDED, {
+                taskId: this.taskId,
+                comment
+            });
+        } catch (error) {
+            console.error('[TaskCommentsModule] Error adding rich comment:', error);
         }
     }
 
@@ -746,45 +781,28 @@ export class TaskCommentsModule extends LitElement {
         return colors[index];
     }
 
-    parseMentions(text) {
+    renderCommentContent(text) {
         if (!text) return '';
         
-        // Regular expression to match @mentions
+        // First render markdown
+        let renderedHtml = MarkdownRenderer.render(text);
+        
+        // Then process mentions in the rendered HTML
         const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
         
-        // Split text by mentions and create HTML
-        const parts = [];
-        let lastIndex = 0;
-        let match;
-        
-        while ((match = mentionRegex.exec(text)) !== null) {
-            // Add text before mention
-            if (match.index > lastIndex) {
-                parts.push(text.substring(lastIndex, match.index));
-            }
-            
-            // Add mention as span
-            const mentionName = match[1];
+        renderedHtml = renderedHtml.replace(mentionRegex, (match, mentionName) => {
             // Check if this is a valid team member
             const isValidMember = this.teamMembers.some(member => 
                 member.name.toLowerCase() === mentionName.toLowerCase()
             );
             
             if (isValidMember) {
-                parts.push(html`<span class="mention">@${mentionName}</span>`);
-            } else {
-                parts.push(`@${mentionName}`);
+                return `<span class="mention">@${mentionName}</span>`;
             }
-            
-            lastIndex = match.index + match[0].length;
-        }
+            return match;
+        });
         
-        // Add remaining text
-        if (lastIndex < text.length) {
-            parts.push(text.substring(lastIndex));
-        }
-        
-        return parts;
+        return html`<div .innerHTML=${renderedHtml}></div>`;
     }
 
     renderComment(comment) {
@@ -801,7 +819,7 @@ export class TaskCommentsModule extends LitElement {
                         <span class="comment-author">${comment.author_name}</span>
                         <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                     </div>
-                    <div class="comment-body">${this.parseMentions(comment.content)}</div>
+                    <div class="comment-body">${this.renderCommentContent(comment.content)}</div>
                     <div class="comment-actions">
                         <button class="comment-action">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -968,25 +986,59 @@ export class TaskCommentsModule extends LitElement {
 
                 ${this.taskId ? html`
                     <div class="comment-input-container">
-                        <mention-suggestion-dropdown
-                            .suggestions=${this.mentionSuggestions}
-                            .visible=${this.showMentions}
-                            @mention-selected=${this.handleMentionSelected}
-                        ></mention-suggestion-dropdown>
-                        <div class="comment-input-wrapper">
-                            <textarea 
-                                class="comment-input"
-                                placeholder="Add a comment... (use @ to mention team members)"
-                                @keydown=${this.handleKeyDown}
-                                @input=${this.handleCommentInput}
-                            ></textarea>
-                            <button 
-                                class="comment-submit"
-                                @click=${this.handleAddComment}
-                            >
-                                Comment
-                            </button>
-                        </div>
+                        ${this.useRichText ? html`
+                            <rich-text-editor
+                                .value=${this.commentText}
+                                placeholder="Add a comment... (Markdown and @mentions supported)"
+                                mode="split"
+                                @input=${(e) => this.commentText = e.target.value}
+                            ></rich-text-editor>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                                <button 
+                                    class="comment-action"
+                                    @click=${() => this.useRichText = false}
+                                    style="margin: 0"
+                                >
+                                    Switch to simple editor
+                                </button>
+                                <button 
+                                    class="comment-submit"
+                                    @click=${this.handleAddRichComment}
+                                    ?disabled=${!this.commentText?.trim()}
+                                >
+                                    Comment
+                                </button>
+                            </div>
+                        ` : html`
+                            <mention-suggestion-dropdown
+                                .suggestions=${this.mentionSuggestions}
+                                .visible=${this.showMentions}
+                                @mention-selected=${this.handleMentionSelected}
+                            ></mention-suggestion-dropdown>
+                            <div class="comment-input-wrapper">
+                                <textarea 
+                                    class="comment-input"
+                                    placeholder="Add a comment... (use @ to mention team members)"
+                                    @keydown=${this.handleKeyDown}
+                                    @input=${this.handleCommentInput}
+                                ></textarea>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <button 
+                                        class="comment-submit"
+                                        @click=${this.handleAddComment}
+                                    >
+                                        Comment
+                                    </button>
+                                    <button 
+                                        class="comment-action"
+                                        @click=${() => this.useRichText = true}
+                                        style="margin: 0; font-size: 11px"
+                                    >
+                                        Rich text
+                                    </button>
+                                </div>
+                            </div>
+                        `}
                     </div>
                 ` : ''}
             </div>

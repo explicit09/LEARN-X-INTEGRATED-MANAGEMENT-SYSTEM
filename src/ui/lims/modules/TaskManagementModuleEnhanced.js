@@ -17,6 +17,7 @@ import './taskManagement/labels/TaskLabelModule.js';
 import './taskManagement/templates/TaskTemplateModule.js';
 import './taskManagement/dependencies/TaskDependenciesModule.js';
 import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
+import { optimisticUpdateManager } from './taskManagement/utils/OptimisticUpdateManager.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -481,6 +482,25 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             .keyboard-hint.visible {
                 opacity: 1;
                 transform: translateX(-50%) translateY(-4px);
+            }
+            
+            /* Type-specific styles for notifications */
+            .keyboard-hint.error {
+                background: rgba(220, 38, 38, 0.95);
+                border-color: rgba(239, 68, 68, 0.5);
+                color: #fff;
+            }
+            
+            .keyboard-hint.success {
+                background: rgba(34, 197, 94, 0.95);
+                border-color: rgba(74, 222, 128, 0.5);
+                color: #fff;
+            }
+            
+            .keyboard-hint.warning {
+                background: rgba(217, 119, 6, 0.95);
+                border-color: rgba(245, 158, 11, 0.5);
+                color: #fff;
             }
 
             /* Natural Language Input */
@@ -2258,19 +2278,62 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             // Clear any previous validation errors
             this.validationErrors = {};
             
-            // Optimistic update
+            // Track optimistic update
+            const trackingId = optimisticUpdateManager.generateTrackingId();
+            const originalTask = { ...task };
+            
+            // Optimistic update - immediately update UI
             this.tasks = this.tasks.map(t => 
                 t.id === taskId ? { ...t, status: newStatus } : t
             );
+            this.requestUpdate();
+            
+            // Track the update for potential rollback
+            optimisticUpdateManager.trackUpdate(
+                trackingId,
+                originalTask,
+                { ...originalTask, status: newStatus },
+                {
+                    onError: (error) => {
+                        // Show error message
+                        this.showKeyboardHint(`Failed to update task: ${error.message}`, 'error');
+                        setTimeout(() => this.hideKeyboardHint(), 3000);
+                    }
+                }
+            );
 
-            // Server update
-            if (window.api) {
-                await window.api.lims.updateTask(taskId, { status: newStatus });
+            try {
+                // Server update
+                if (window.api) {
+                    const updatedTask = await window.api.lims.updateTask(taskId, { status: newStatus });
+                    
+                    // Confirm the update was successful
+                    optimisticUpdateManager.confirmUpdate(trackingId, updatedTask);
+                    
+                    // Update with server response (in case there are computed fields)
+                    if (updatedTask) {
+                        this.tasks = this.tasks.map(t => 
+                            t.id === taskId ? updatedTask : t
+                        );
+                        this.requestUpdate();
+                    }
+                }
+
+                // Show success feedback
+                this.showKeyboardHint(`Task moved to ${newStatus}`);
+                setTimeout(() => this.hideKeyboardHint(), 2000);
+                
+            } catch (serverError) {
+                // Rollback on server error
+                const originalData = optimisticUpdateManager.rollbackUpdate(trackingId, serverError);
+                if (originalData) {
+                    this.tasks = this.tasks.map(t => 
+                        t.id === taskId ? originalData : t
+                    );
+                    this.requestUpdate();
+                }
+                throw serverError;
             }
-
-            // Show success feedback
-            this.showKeyboardHint(`Task moved to ${newStatus}`);
-            setTimeout(() => this.hideKeyboardHint(), 2000);
         } catch (error) {
             this.handleError(error, 'Updating task status');
             // Revert optimistic update
@@ -3441,13 +3504,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     // UI helper methods
-    showKeyboardHint(hint) {
+    showKeyboardHint(hint, type = 'info') {
         this.keyboardHint = hint;
+        this.keyboardHintType = type; // 'info', 'success', 'error', 'warning'
         this.requestUpdate();
     }
 
     hideKeyboardHint() {
         this.keyboardHint = '';
+        this.keyboardHintType = 'info';
         this.requestUpdate();
     }
 
@@ -4047,14 +4112,47 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     async handleDeleteTask(event, task) {
         event.stopPropagation(); // Prevent task selection
         if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
+            // Track optimistic update
+            const trackingId = optimisticUpdateManager.generateTrackingId();
+            const originalTasks = [...this.tasks];
+            
+            // Optimistic update - immediately remove from UI
+            this.tasks = this.tasks.filter(t => t.id !== task.id);
+            this.requestUpdate();
+            this.showNotification('Deleting task...', 'info');
+            
+            // Track the update for potential rollback
+            optimisticUpdateManager.trackUpdate(
+                trackingId,
+                originalTasks,
+                this.tasks,
+                {
+                    onError: (error) => {
+                        this.showNotification(`Failed to delete task: ${error.message}`, 'error');
+                    }
+                }
+            );
+            
             try {
+                // Delete task via API
                 await window.api.lims.deleteTask(task.id);
-                // Remove from local state
-                this.tasks = this.tasks.filter(t => t.id !== task.id);
-                this.requestUpdate();
+                
+                // Confirm the deletion
+                optimisticUpdateManager.confirmUpdate(trackingId, null);
+                
+                this.showNotification('Task deleted successfully', 'success');
                 console.log(`[TaskManagement] Deleted task: ${task.title}`);
+                
             } catch (error) {
+                // Rollback on error
+                const originalData = optimisticUpdateManager.rollbackUpdate(trackingId, error);
+                if (originalData) {
+                    this.tasks = originalData;
+                    this.requestUpdate();
+                }
+                
                 this.handleError(error, 'Deleting task');
+                this.showNotification('Failed to delete task', 'error');
             }
         }
     }
@@ -4256,6 +4354,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         const taskId = taskToUpdate.id;
         const taskTitle = taskToUpdate.title;
         
+        // Find original task
+        const originalTask = this.tasks.find(t => t.id === taskId);
+        if (!originalTask) {
+            this.showNotification('Task not found', 'error');
+            return;
+        }
+        
         // Format due_date properly - convert to date-only format (YYYY-MM-DD)
         if (taskToUpdate.due_date) {
             const dueDate = new Date(taskToUpdate.due_date);
@@ -4267,19 +4372,59 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             }
         }
         
+        // Track optimistic update
+        const trackingId = optimisticUpdateManager.generateTrackingId();
+        
+        // Optimistic update - immediately update UI
+        this.tasks = this.tasks.map(t => 
+            t.id === taskId ? { ...taskToUpdate } : t
+        );
+        this.requestUpdate();
+        
+        // Close modal immediately for better UX
+        this.closeEditModal();
+        this.showNotification('Updating task...', 'info');
+        
+        // Track the update
+        optimisticUpdateManager.trackUpdate(
+            trackingId,
+            originalTask,
+            taskToUpdate,
+            {
+                onError: (error) => {
+                    this.showNotification(`Failed to update task: ${error.message}`, 'error');
+                }
+            }
+        );
+        
         try {
             // Update task via API
-            await window.api.lims.updateTask(taskId, taskToUpdate);
+            const updatedTask = await window.api.lims.updateTask(taskId, taskToUpdate);
             
-            // Update local state
-            this.tasks = this.tasks.map(t => 
-                t.id === taskId ? { ...taskToUpdate } : t
-            );
+            // Confirm the update
+            optimisticUpdateManager.confirmUpdate(trackingId, updatedTask);
             
-            this.closeEditModal();
-            this.showNotification('Task updated successfully');
+            // Update with server response
+            if (updatedTask) {
+                this.tasks = this.tasks.map(t => 
+                    t.id === taskId ? updatedTask : t
+                );
+                this.requestUpdate();
+            }
+            
+            this.showNotification('Task updated successfully', 'success');
             console.log(`[TaskManagement] Updated task: ${taskTitle}`);
+            
         } catch (error) {
+            // Rollback on error
+            const originalData = optimisticUpdateManager.rollbackUpdate(trackingId, error);
+            if (originalData) {
+                this.tasks = this.tasks.map(t => 
+                    t.id === taskId ? originalData : t
+                );
+                this.requestUpdate();
+            }
+            
             this.handleError(error, 'Updating task');
             this.showNotification('Failed to update task', 'error');
         }
@@ -4570,8 +4715,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     }
 
     renderKeyboardHint() {
+        const hintClass = `keyboard-hint ${this.keyboardHint ? 'visible' : ''} ${this.keyboardHintType || 'info'}`;
         return html`
-            <div class="keyboard-hint ${this.keyboardHint ? 'visible' : ''}">
+            <div class="${hintClass}">
                 ${this.keyboardHint}
             </div>
         `;
@@ -5112,7 +5258,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     
     showNotification(message, type = 'info') {
         // Use keyboard hint system for notifications
-        this.showKeyboardHint(message);
+        this.showKeyboardHint(message, type);
         setTimeout(() => this.hideKeyboardHint(), 3000);
     }
     

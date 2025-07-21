@@ -17,6 +17,7 @@ import './taskManagement/labels/TaskLabelModule.js';
 import './taskManagement/templates/TaskTemplateModule.js';
 import './taskManagement/dependencies/TaskDependenciesModule.js';
 import './taskManagement/editor/RichTextEditor.js';
+import './taskManagement/reporting/TaskReportingModule.js';
 import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
 import { optimisticUpdateManager } from './taskManagement/utils/OptimisticUpdateManager.js';
 import { undoRedoManager } from './taskManagement/utils/UndoRedoManager.js';
@@ -2039,28 +2040,68 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     // Keyboard shortcut handlers
     handleGlobalKeyDown(event) {
-        // Command palette activation
+        // Check if user is typing in any input field - INCLUDING portal inputs and web components
+        const activeElement = this.shadowRoot?.activeElement || document.activeElement;
+        
+        // Check portal inputs
+        const portalInputs = document.querySelectorAll('#lims-modal-portal input, #lims-modal-portal textarea, #lims-modal-portal [contenteditable="true"]');
+        const isTypingInPortal = Array.from(portalInputs).some(el => el === document.activeElement || el.contains(document.activeElement));
+        
+        // Check for rich text editors and other custom components
+        const richTextEditors = document.querySelectorAll('rich-text-editor');
+        const isTypingInRichText = Array.from(richTextEditors).some(el => {
+            const shadowInput = el.shadowRoot?.querySelector('textarea, [contenteditable="true"]');
+            return shadowInput && (shadowInput === document.activeElement || el.contains(document.activeElement));
+        });
+        
+        // Check shadow DOM inputs in comments and other modules
+        const commentInputs = this.shadowRoot?.querySelectorAll('.comment-input, .command-input, .search-input, .nl-input');
+        const isTypingInComments = commentInputs && Array.from(commentInputs).some(el => el === this.shadowRoot.activeElement);
+        
+        const isTyping = isTypingInPortal || isTypingInRichText || isTypingInComments || (activeElement && (
+            activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.contentEditable === 'true' ||
+            activeElement.closest('input, textarea, [contenteditable="true"]')
+        ));
+        
+        // Also check if any modal is open
+        const modalOpen = this.showTaskCreationModal || this.showEditModal || this.commandPaletteOpen;
+        
+        // If typing or modal is open, only allow Cmd/Ctrl shortcuts
+        if (isTyping || modalOpen) {
+            // Still allow Cmd/Ctrl+K for command palette
+            if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+                event.preventDefault();
+                this.toggleCommandPalette();
+                return;
+            }
+            
+            // Allow undo/redo only with Cmd/Ctrl
+            if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
+                event.preventDefault();
+                this.performUndo();
+                return;
+            }
+            
+            if ((event.metaKey || event.ctrlKey) && (event.key === 'z' && event.shiftKey || event.key === 'y')) {
+                event.preventDefault();
+                this.performRedo();
+                return;
+            }
+            
+            // Block all other shortcuts when typing or in modal
+            return;
+        }
+
+        // Command palette (when not typing)
         if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
             event.preventDefault();
             this.toggleCommandPalette();
             return;
         }
 
-        // Check if user is typing in any input field
-        const activeElement = this.shadowRoot?.activeElement || document.activeElement;
-        const isTyping = activeElement && (
-            activeElement.tagName === 'INPUT' ||
-            activeElement.tagName === 'TEXTAREA' ||
-            activeElement.contentEditable === 'true' ||
-            activeElement.closest('input, textarea, [contenteditable="true"]')
-        );
-        
-        // Don't handle shortcuts if typing
-        if (isTyping) {
-            return;
-        }
-
-        // Undo/Redo shortcuts (only when not typing)
+        // Undo/Redo shortcuts (when not typing)
         if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
             event.preventDefault();
             this.performUndo();
@@ -2072,13 +2113,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             this.performRedo();
             return;
         }
-        
-        // Also check if task creation modal is open
-        if (isTyping || this.showTaskCreationModal) {
-            return;
-        }
 
-        // Single-letter shortcuts
+        // Single-letter shortcuts (only when not typing and no modal open)
         switch (event.key.toLowerCase()) {
             case 'c':
                 event.preventDefault();
@@ -2534,6 +2570,32 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         }
     }
 
+    // Selection mode methods
+    exitSelectionMode() {
+        this.selectedTasks = [];
+        this.showKeyboardHint('Selection mode deactivated');
+        setTimeout(() => this.hideKeyboardHint(), 1500);
+        this.requestUpdate();
+    }
+
+    // Edit task method
+    editTask(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        // Open edit modal with task data
+        this.editingTask = task;
+        this.newTaskData = {
+            ...task,
+            labels: Array.isArray(task.labels) ? task.labels : []
+        };
+        this.showTaskCreationModal = true;
+        this.requestUpdate();
+        
+        // Render modal after update
+        setTimeout(() => this.renderModalInPortal(), 0);
+    }
+
     // Quick actions
     quickCreateTask(status = 'todo') {
         console.log('[quickCreateTask] Called with status:', status);
@@ -2895,6 +2957,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.showTaskCreationModal = false;
         this.newTaskData = this.getEmptyTaskData();
         this.showLabelDropdownCreate = false;
+        this.editingTask = null; // Clear editing task
         ModalPortal.destroy(this.modalId);
         this.requestUpdate();
     }
@@ -2948,7 +3011,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 'click': () => this.closeTaskModal()
             },
             '.modal-button-primary': {
-                'click': () => this.createTaskFromModal()
+                'click': () => {
+                    if (this.editingTask) {
+                        this.updateTaskFromModal();
+                    } else {
+                        this.createTaskFromModal();
+                    }
+                }
             },
             '.modal-button-cancel': {
                 'click': () => this.closeTaskModal()
@@ -3069,7 +3138,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             <div class="task-creation-modal-overlay">
                 <div class="task-creation-modal">
                     <div class="modal-header">
-                        <h3 class="modal-title">Create New Task</h3>
+                        <h3 class="modal-title">${this.editingTask ? 'Edit Task' : 'Create New Task'}</h3>
                         <button class="modal-close-button">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -3088,7 +3157,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </button>
                         <button class="modal-button modal-button-primary" 
                             ${!this.newTaskData.title.trim() || this.isCreatingTask ? 'disabled' : ''}>
-                            ${this.isCreatingTask ? 'Creating...' : 'Create Task'}
+                            ${this.isCreatingTask ? (this.editingTask ? 'Updating...' : 'Creating...') : (this.editingTask ? 'Update Task' : 'Create Task')}
                         </button>
                     </div>
                 </div>
@@ -3603,6 +3672,67 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             this.isCreatingTask = false;
         }
     }
+
+    async updateTaskFromModal() {
+        if (!this.newTaskData.title.trim() || this.isCreatingTask || !this.editingTask) return;
+        
+        this.isCreatingTask = true; // Reuse this flag for updating too
+        
+        try {
+            // Format the data for update
+            const updates = {
+                title: this.newTaskData.title,
+                description: this.newTaskData.description,
+                status: this.newTaskData.status,
+                priority: this.newTaskData.priority,
+                assignee_id: this.newTaskData.assignee_id,
+                project_id: this.newTaskData.project_id,
+                sprint_id: this.newTaskData.sprint_id,
+                labels: this.newTaskData.labels.length > 0 ? this.newTaskData.labels : [],
+                time_estimate: this.newTaskData.time_estimate,
+                time_spent: this.newTaskData.time_spent
+            };
+            
+            // Format dates properly
+            if (this.newTaskData.due_date) {
+                const dueDate = new Date(this.newTaskData.due_date);
+                if (!isNaN(dueDate.getTime()) && dueDate.getFullYear() > 1900 && dueDate.getFullYear() < 2100) {
+                    updates.due_date = dueDate.toISOString().split('T')[0];
+                } else {
+                    updates.due_date = null;
+                }
+            } else {
+                updates.due_date = null;
+            }
+            
+            // Track the original task for undo
+            const originalTask = this.tasks.find(t => t.id === this.editingTask.id);
+            
+            // Update the task
+            if (window.api?.lims?.updateTask) {
+                const updatedTask = await window.api.lims.updateTask(this.editingTask.id, updates);
+                
+                // Track for undo
+                if (originalTask && updatedTask) {
+                    undoRedoManager.recordTaskUpdate(originalTask, updatedTask);
+                }
+                
+                // Reload tasks to ensure sync
+                await this.loadModuleData();
+            }
+            
+            // Close the modal
+            this.closeTaskModal();
+            this.editingTask = null;
+            this.showKeyboardHint('Task updated successfully!');
+            setTimeout(() => this.hideKeyboardHint(), 2000);
+        } catch (error) {
+            console.error('[updateTaskFromModal] Error:', error);
+            this.handleError(error, 'Updating task');
+        } finally {
+            this.isCreatingTask = false;
+        }
+    }
     
     focusLabelInput(event) {
         const input = event.currentTarget.querySelector('.label-input-field');
@@ -3793,7 +3923,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 ${TaskSearchAndFilterIntegration.renderSearchAndFilters()}
                 ${this.renderToolbar()}
                 <div class="task-content">
-                    ${this.currentView === 'kanban' ? this.renderEnhancedKanbanView(displayTasks) : this.renderListView(displayTasks)}
+                    ${this.currentView === 'reporting' ? 
+                        html`<task-reporting-module></task-reporting-module>` : 
+                        this.currentView === 'kanban' ? 
+                            this.renderEnhancedKanbanView(displayTasks) : 
+                            this.renderListView(displayTasks)
+                    }
                 </div>
                 ${this.renderKeyboardHint()}
                 ${this.renderSelectionCount()}
@@ -3849,6 +3984,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             @click=${() => this.currentView = 'list'}
                         >
                             List
+                        </button>
+                        <button 
+                            class="view-button ${this.currentView === 'reporting' ? 'active' : ''}"
+                            @click=${() => this.currentView = 'reporting'}
+                        >
+                            Reports
                         </button>
                     </div>
 

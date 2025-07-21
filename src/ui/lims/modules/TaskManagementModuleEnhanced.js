@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { LIMSModule } from '../core/LIMSModule.js';
+import { IntegratedModuleMixin } from './integration/IntegratedModuleMixin.js';
 import { TaskManagementDemo } from './TaskManagementDemo.js';
 import { ModalPortal } from '../utils/modalPortal.js';
 import { TaskSearchAndFilterIntegration } from './taskManagement/TaskSearchAndFilterIntegration.js';
@@ -32,7 +33,10 @@ import { MarkdownRenderer } from './taskManagement/utils/MarkdownRenderer.js';
  * Implements @dnd-kit for accessibility-first kanban board functionality
  * Features: Drag-and-drop, command palette, keyboard shortcuts, natural language input
  */
-export class TaskManagementModuleEnhanced extends LIMSModule {
+export class TaskManagementModuleEnhanced extends IntegratedModuleMixin(LIMSModule) {
+    static moduleId = 'taskManagement';
+    static version = '2.0.0';
+    static dependencies = ['search', 'filter', 'reporting'];
     static styles = [
         LIMSModule.styles,
         css`
@@ -1975,6 +1979,224 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         if (indicator) {
             indicator.remove();
         }
+    }
+    
+    // ========== Integration Methods ==========
+    
+    /**
+     * Handle integration requests from other modules
+     */
+    async handleIntegrationRequest(requestType, params) {
+        console.log(`[TaskManagement] Handling integration request: ${requestType}`, params);
+        
+        switch (requestType) {
+            case 'getTasks':
+                return this.getTasksForIntegration(params);
+                
+            case 'getTaskById':
+                return this.tasks.find(t => t.id === params.taskId);
+                
+            case 'createTask':
+                return this.createTaskFromIntegration(params);
+                
+            case 'updateTask':
+                return this.updateTaskFromIntegration(params.taskId, params.updates);
+                
+            case 'getStatistics':
+                return this.getTaskStatistics(params);
+                
+            case 'bulkOperation':
+                return this.performBulkOperationFromIntegration(params);
+                
+            default:
+                console.warn(`[TaskManagement] Unknown integration request: ${requestType}`);
+                return null;
+        }
+    }
+    
+    /**
+     * Get tasks for integration with filtering
+     */
+    getTasksForIntegration(params = {}) {
+        let tasks = [...this.tasks];
+        
+        // Apply filters
+        if (params.projectId) {
+            tasks = tasks.filter(t => t.project_id === params.projectId);
+        }
+        
+        if (params.status) {
+            tasks = tasks.filter(t => t.status === params.status);
+        }
+        
+        if (params.assigneeId) {
+            tasks = tasks.filter(t => t.assigned_to === params.assigneeId);
+        }
+        
+        if (params.labels && params.labels.length > 0) {
+            tasks = tasks.filter(t => 
+                t.labels && params.labels.some(label => t.labels.includes(label))
+            );
+        }
+        
+        if (params.dateRange) {
+            const { start, end } = params.dateRange;
+            tasks = tasks.filter(t => {
+                const createdAt = new Date(t.created_at);
+                return createdAt >= new Date(start) && createdAt <= new Date(end);
+            });
+        }
+        
+        return tasks;
+    }
+    
+    /**
+     * Create task from integration request
+     */
+    async createTaskFromIntegration(taskData) {
+        const task = await this.createTask(taskData);
+        
+        // Notify other modules
+        this.emitIntegrationEvent('task:created', task);
+        
+        return task;
+    }
+    
+    /**
+     * Update task from integration request
+     */
+    async updateTaskFromIntegration(taskId, updates) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) {
+            throw new Error(`Task ${taskId} not found`);
+        }
+        
+        // Perform update
+        const updatedTask = await window.api.lims.updateTask(taskId, updates);
+        
+        // Update local state
+        const index = this.tasks.findIndex(t => t.id === taskId);
+        this.tasks[index] = updatedTask;
+        this.requestUpdate();
+        
+        // Notify other modules
+        this.emitIntegrationEvent('task:updated', updatedTask);
+        
+        return updatedTask;
+    }
+    
+    /**
+     * Get task statistics for reporting
+     */
+    getTaskStatistics(params = {}) {
+        const tasks = this.getTasksForIntegration(params);
+        
+        return {
+            total: tasks.length,
+            byStatus: this.groupBy(tasks, 'status'),
+            byPriority: this.groupBy(tasks, 'priority'),
+            byAssignee: this.groupBy(tasks, 'assigned_to'),
+            avgCompletionTime: this.calculateAvgCompletionTime(tasks),
+            overdueTasks: tasks.filter(t => this.isOverdue(t)).length
+        };
+    }
+    
+    /**
+     * Perform bulk operation from integration
+     */
+    async performBulkOperationFromIntegration(params) {
+        const { taskIds, operation, data } = params;
+        
+        switch (operation) {
+            case 'updateStatus':
+                await this.bulkUpdateStatus(taskIds, data.status);
+                break;
+                
+            case 'updatePriority':
+                await this.bulkUpdatePriority(taskIds, data.priority);
+                break;
+                
+            case 'assign':
+                await this.bulkAssign(taskIds, data.assigneeId);
+                break;
+                
+            case 'addLabels':
+                await this.bulkAddLabels(taskIds, data.labels);
+                break;
+                
+            case 'moveToProject':
+                await this.bulkMoveToProject(taskIds, data.projectId);
+                break;
+                
+            default:
+                throw new Error(`Unknown bulk operation: ${operation}`);
+        }
+        
+        return { success: true, affectedTasks: taskIds.length };
+    }
+    
+    /**
+     * Apply global filters from integration
+     */
+    applyGlobalFilters(filters) {
+        console.log('[TaskManagement] Applying global filters:', filters);
+        
+        // Update search and filter integration
+        if (TaskSearchAndFilterIntegration.integration) {
+            TaskSearchAndFilterIntegration.integration.updateFilters(filters);
+            this.requestUpdate();
+        }
+    }
+    
+    /**
+     * Handle project change from integration
+     */
+    handleProjectChange(data) {
+        console.log('[TaskManagement] Project changed:', data);
+        
+        if (data.projectId) {
+            // Update current project filter
+            this.currentProjectId = data.projectId;
+            this.loadModuleData(); // Reload tasks for new project
+        }
+    }
+    
+    /**
+     * Utility method to group tasks by property
+     */
+    groupBy(tasks, property) {
+        return tasks.reduce((groups, task) => {
+            const key = task[property] || 'unassigned';
+            groups[key] = (groups[key] || 0) + 1;
+            return groups;
+        }, {});
+    }
+    
+    /**
+     * Calculate average completion time for tasks
+     */
+    calculateAvgCompletionTime(tasks) {
+        const completedTasks = tasks.filter(t => 
+            t.status === 'done' && t.completed_at && t.created_at
+        );
+        
+        if (completedTasks.length === 0) return 0;
+        
+        const totalTime = completedTasks.reduce((sum, task) => {
+            const created = new Date(task.created_at);
+            const completed = new Date(task.completed_at);
+            return sum + (completed - created);
+        }, 0);
+        
+        return totalTime / completedTasks.length / (1000 * 60 * 60); // in hours
+    }
+    
+    /**
+     * Check if task is overdue
+     */
+    isOverdue(task) {
+        if (!task.due_date || task.status === 'done') return false;
+        return new Date(task.due_date) < new Date();
     }
 
     updated(changedProperties) {

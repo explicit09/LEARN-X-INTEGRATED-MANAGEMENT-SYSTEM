@@ -13,12 +13,15 @@ export class TaskReportingModule extends LitElement {
         :host {
             display: block;
             width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
+            height: 100%;
+            overflow-y: auto;
         }
 
         .reporting-container {
             padding: 20px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
         }
 
         .report-header {

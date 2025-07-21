@@ -420,11 +420,29 @@ export class TaskReportingModule extends LitElement {
         if (!Chart) {
             try {
                 console.log('[TaskReporting] Loading Chart.js...');
-                Chart = (await import('chart.js/auto')).default;
-                console.log('[TaskReporting] Chart.js loaded successfully');
+                // Try different import methods for better Electron compatibility
+                if (window.Chart) {
+                    // If Chart.js is loaded globally
+                    Chart = window.Chart;
+                    console.log('[TaskReporting] Chart.js found in window object');
+                } else {
+                    // Try dynamic import
+                    const chartModule = await import('chart.js/auto');
+                    Chart = chartModule.Chart || chartModule.default || chartModule;
+                    console.log('[TaskReporting] Chart.js loaded via dynamic import');
+                }
             } catch (error) {
                 console.error('[TaskReporting] Failed to load Chart.js:', error);
-                // Continue without charts - the module can still show data tables
+                // Try requiring Chart.js as a fallback (for Electron)
+                try {
+                    if (window.require) {
+                        Chart = window.require('chart.js/auto');
+                        console.log('[TaskReporting] Chart.js loaded via require');
+                    }
+                } catch (requireError) {
+                    console.error('[TaskReporting] Also failed to require Chart.js:', requireError);
+                    // Continue without charts - the module can still show data tables
+                }
             }
         }
         

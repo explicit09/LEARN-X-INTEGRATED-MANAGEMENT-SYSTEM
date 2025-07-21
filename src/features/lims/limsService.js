@@ -182,11 +182,92 @@ class LimsService {
         internalBridge.emit('window:requestVisibility', { name: 'lims-dashboard', visible: false });
     }
 
+    // Task Templates
+    async getTaskTemplates() {
+        try {
+            console.log('[LimsService] Getting task templates');
+            const { data, error } = await this.db
+                .from('task_templates')
+                .select('*')
+                .eq('is_active', true)
+                .order('category', { ascending: true })
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            console.log(`[LimsService] Got ${data?.length || 0} templates`);
+            return data || [];
+        } catch (error) {
+            console.error('[LimsService] Error getting templates:', error);
+            return [];
+        }
+    }
+
+    async createTaskTemplate(template) {
+        try {
+            console.log('[LimsService] Creating task template:', template.name);
+            const { data, error } = await this.db
+                .from('task_templates')
+                .insert({
+                    ...template,
+                    created_by: this.getCurrentUserId()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            console.log('[LimsService] Created template:', data.id);
+            return data;
+        } catch (error) {
+            console.error('[LimsService] Error creating template:', error);
+            throw error;
+        }
+    }
+
+    async updateTaskTemplate(id, updates) {
+        try {
+            console.log('[LimsService] Updating task template:', id);
+            const { data, error } = await this.db
+                .from('task_templates')
+                .update({
+                    ...updates,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            console.log('[LimsService] Updated template:', id);
+            return data;
+        } catch (error) {
+            console.error('[LimsService] Error updating template:', error);
+            throw error;
+        }
+    }
+
+    async deleteTaskTemplate(id) {
+        try {
+            console.log('[LimsService] Deleting task template:', id);
+            const { error } = await this.db
+                .from('task_templates')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            console.log('[LimsService] Deleted template:', id);
+            return true;
+        } catch (error) {
+            console.error('[LimsService] Error deleting template:', error);
+            throw error;
+        }
+    }
+
     // Sprint management
     async getSprints(projectId) {
         try {
             const sprints = await this.db.findMany('sprints', { project_id: projectId }, {
-                orderBy: 'start_date.desc'
+                orderBy: 'start_date',
+                ascending: false
             });
             return sprints;
         } catch (error) {

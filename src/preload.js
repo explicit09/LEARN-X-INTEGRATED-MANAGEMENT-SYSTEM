@@ -325,6 +325,12 @@ contextBridge.exposeInMainWorld('api', {
     getSprints: (projectId) => ipcRenderer.invoke('lims:getSprints', projectId),
     createSprint: (sprintData) => ipcRenderer.invoke('lims:createSprint', sprintData),
     
+    // Task Templates
+    getTaskTemplates: () => ipcRenderer.invoke('lims:getTaskTemplates'),
+    createTaskTemplate: (template) => ipcRenderer.invoke('lims:createTaskTemplate', template),
+    updateTaskTemplate: (id, updates) => ipcRenderer.invoke('lims:updateTaskTemplate', id, updates),
+    deleteTaskTemplate: (id) => ipcRenderer.invoke('lims:deleteTaskTemplate', id),
+    
     // Analytics
     getTaskMetrics: (period) => ipcRenderer.invoke('lims:getTaskMetrics', period),
     

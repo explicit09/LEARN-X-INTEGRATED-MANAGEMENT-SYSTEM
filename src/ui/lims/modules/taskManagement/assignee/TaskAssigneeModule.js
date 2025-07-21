@@ -19,26 +19,32 @@ export class TaskAssigneeModule extends LitElement {
 
         .assignee-dropdown {
             width: 100%;
-            background: var(--input-background, rgba(255, 255, 255, 0.1));
-            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: var(--text-color, #e5e5e7);
             padding: 10px 40px 10px 12px;
-            border-radius: var(--border-radius, 7px);
+            border-radius: 6px;
             font-size: 14px;
+            line-height: 1.3;
+            height: 40px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             gap: 8px;
+            box-sizing: border-box;
         }
 
         .assignee-dropdown:hover {
-            background: var(--input-hover-background, rgba(255, 255, 255, 0.15));
-            border-color: var(--accent-color, #007aff);
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
+        .assignee-dropdown:focus,
         .assignee-dropdown.open {
-            border-color: var(--accent-color, #007aff);
+            border-color: #007aff;
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
         }
 
         .dropdown-arrow {

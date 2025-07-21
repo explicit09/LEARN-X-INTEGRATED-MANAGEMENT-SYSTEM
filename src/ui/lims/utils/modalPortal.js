@@ -104,12 +104,18 @@ export class ModalPortal {
      */
     static attachListeners(id, listeners) {
         const modal = this.activeModals.get(id);
-        if (!modal) return;
+        if (!modal) {
+            console.log('[DEBUG] Modal not found for id:', id);
+            return;
+        }
 
+        console.log('[DEBUG] Attaching listeners for modal:', id);
         Object.entries(listeners).forEach(([selector, events]) => {
             const elements = modal.querySelectorAll(selector);
+            console.log(`[DEBUG] Found ${elements.length} elements for selector: ${selector}`);
             elements.forEach(element => {
                 Object.entries(events).forEach(([eventName, handler]) => {
+                    console.log(`[DEBUG] Adding ${eventName} listener to ${selector}`);
                     element.addEventListener(eventName, handler);
                 });
             });

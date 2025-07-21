@@ -5,8 +5,15 @@ import { ModalPortal } from '../utils/modalPortal.js';
 import { TaskSearchAndFilterIntegration } from './taskManagement/TaskSearchAndFilterIntegration.js';
 import { TaskDueDateModule } from './taskManagement/dueDate/TaskDueDateModule.js';
 import { TaskAssigneeModule } from './taskManagement/assignee/TaskAssigneeModule.js';
+import { TaskTimeTrackingModule } from './taskManagement/timeTracking/TaskTimeTrackingModule.js';
+import { TaskSprintModule } from './taskManagement/sprint/TaskSprintModule.js';
+import { TaskLabelModule } from './taskManagement/labels/TaskLabelModule.js';
+import { TaskTemplateModule } from './taskManagement/templates/TaskTemplateModule.js';
 import './taskManagement/assignee/TaskAssigneeModule.js';
 import './taskManagement/comments/TaskCommentsModule.js';
+import './taskManagement/sprint/TaskSprintModule.js';
+import './taskManagement/labels/TaskLabelModule.js';
+import './taskManagement/templates/TaskTemplateModule.js';
 import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
@@ -663,6 +670,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 align-items: center;
             }
             
+            .template-content {
+                flex: 1;
+                overflow-y: auto;
+                padding: 20px;
+            }
+            
             .close-button {
                 width: 32px;
                 height: 32px;
@@ -934,10 +947,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 9999; /* Increased z-index to ensure it's on top */
+                z-index: 10001; /* Ensure it's above template panel */
                 backdrop-filter: blur(4px);
-                /* Break out of parent constraints */
-                overflow: auto; /* Allow scrolling if needed */
+                padding: 20px;
+                box-sizing: border-box;
             }
             
             .task-creation-modal {
@@ -945,15 +958,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 12px;
                 width: 600px;
-                max-width: 90vw;
-                height: calc(90vh - 40px); /* Use viewport height minus margin */
-                max-height: calc(100vh - 40px); /* Allow full viewport usage */
+                max-width: calc(100vw - 40px);
+                height: auto;
+                max-height: calc(100vh - 40px);
                 display: flex;
                 flex-direction: column;
                 box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-                margin: 20px; /* Consistent margin */
-                position: relative; /* Ensure proper stacking context */
-                overflow: hidden; /* Prevent modal itself from scrolling */
+                overflow: hidden;
             }
             
             .modal-header {
@@ -1044,6 +1055,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 font-size: 14px;
                 transition: all 0.2s;
                 outline: none;
+                box-sizing: border-box;
+            }
+            
+            .form-input, .form-select {
+                height: 40px;
+                line-height: 1.3;
             }
             
             .form-input:focus, .form-textarea:focus, .form-select:focus {
@@ -1120,6 +1137,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 6px;
                 min-height: 42px;
+                position: relative;
             }
             
             .label-tag {
@@ -1170,6 +1188,95 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 cursor: pointer;
                 transition: all 0.2s;
                 border: 1px solid transparent;
+            }
+            
+            /* Label styles for modal */
+            .label-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                cursor: default;
+                transition: all 0.2s;
+                border: 1px solid transparent;
+            }
+            
+            .label-chip .label-remove {
+                width: 14px;
+                height: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                background: rgba(0, 0, 0, 0.3);
+                font-size: 10px;
+                cursor: pointer;
+            }
+            
+            .label-chip .label-remove:hover {
+                background: rgba(0, 0, 0, 0.5);
+            }
+            
+            .add-label-btn {
+                background: transparent !important;
+                border: 1px dashed rgba(255, 255, 255, 0.3);
+                color: rgba(255, 255, 255, 0.6);
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .add-label-btn:hover {
+                border-color: rgba(255, 255, 255, 0.5);
+                color: rgba(255, 255, 255, 0.8);
+            }
+            
+            .create-labels-input,
+            .edit-labels-input {
+                position: relative;
+            }
+            
+            .label-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                margin-top: 4px;
+                background: rgba(30, 30, 30, 0.95);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                padding: 8px;
+                z-index: 10003;
+                max-height: 200px;
+                overflow-y: auto;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            }
+            
+            .label-option {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 13px;
+                color: #e5e5e7;
+            }
+            
+            .label-option:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .label-color-dot {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                flex-shrink: 0;
             }
             
             .modal-button-cancel {
@@ -1288,6 +1395,99 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 background: rgba(125, 211, 252, 0.2);
                 color: #7dd3fc;
                 border-color: rgba(125, 211, 252, 0.3);
+            }
+
+            .time-tracking-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                margin-left: 8px;
+            }
+
+            .time-tracking-badge .time-icon {
+                width: 14px;
+                height: 14px;
+                opacity: 0.8;
+            }
+
+            .time-tracking-badge .time-spent,
+            .time-tracking-badge .time-estimate {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                border: 1px solid transparent;
+            }
+
+            .time-tracking-badge .time-estimate {
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+                border-color: rgba(59, 130, 246, 0.3);
+            }
+
+            .time-tracking-badge .time-spent {
+                background: rgba(16, 185, 129, 0.2);
+                color: #34d399;
+                border-color: rgba(16, 185, 129, 0.3);
+            }
+
+            .time-tracking-badge .time-spent.overdue {
+                background: rgba(239, 68, 68, 0.2);
+                color: #f87171;
+                border-color: rgba(239, 68, 68, 0.3);
+            }
+
+            .sprint-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+                border: 1px solid rgba(59, 130, 246, 0.3);
+                margin-left: 8px;
+            }
+
+            .sprint-badge.active {
+                background: rgba(16, 185, 129, 0.2);
+                color: #34d399;
+                border-color: rgba(16, 185, 129, 0.3);
+            }
+
+            .sprint-badge.completed {
+                background: rgba(156, 163, 175, 0.2);
+                color: #9ca3af;
+                border-color: rgba(156, 163, 175, 0.3);
+            }
+
+            .sprint-badge.upcoming {
+                background: rgba(251, 191, 36, 0.2);
+                color: #fbbf24;
+                border-color: rgba(251, 191, 36, 0.3);
+            }
+
+            .sprint-badge .sprint-icon {
+                width: 12px;
+                height: 12px;
+                opacity: 0.8;
+            }
+
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                backdrop-filter: blur(4px);
             }
 
             @keyframes pulse-overdue {
@@ -1480,6 +1680,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         currentView: { type: String },
         tasks: { type: Array },
         projects: { type: Array },
+        sprints: { type: Array },
+        allLabels: { type: Array },
         filterStatus: { type: String },
         filterProject: { type: String },
         selectedTask: { type: Object },
@@ -1516,6 +1718,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.currentView = 'kanban';
         this.tasks = [];
         this.projects = [];
+        this.sprints = [];
+        this.allLabels = [];
         this.filterStatus = 'all';
         this.filterProject = 'all';
         this.selectedTask = null;
@@ -1559,6 +1763,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.isCreatingTask = false;
         this.editingTask = null;
         this.showEditModal = false;
+        this.labelDropdownOpen = false;
+        this.showLabelDropdownEdit = false;
+        this.showLabelDropdownCreate = false;
         
         // Bind keyboard shortcuts
         this.handleKeyDown = this.handleKeyDown.bind(this);
@@ -1573,13 +1780,14 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         this.handleLabelKeydown = this.handleLabelKeydown.bind(this);
         this.removeLabel = this.removeLabel.bind(this);
         
-        // Initialize templates and workflow rules
-        this.taskTemplates = this.getTaskTemplates();
+        // Initialize workflow rules
         this.workflowRules = this.getWorkflowRules();
     }
 
     connectedCallback() {
         super.connectedCallback();
+        // Store reference for edit modal
+        window.taskManagementModule = this;
         // Set up keyboard event listeners
         document.addEventListener('keydown', this.handleGlobalKeyDown);
         
@@ -1707,7 +1915,29 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 this.projects = projects || [];
                 this.teamMembers = teamMembers || [];
                 
-                console.log(`[loadModuleData] Loaded ${this.tasks.length} tasks and ${this.projects.length} projects`);
+                // Load sprints for all projects
+                if (projects && projects.length > 0) {
+                    const allSprints = await Promise.all(
+                        projects.map(project => window.api.lims.getSprints(project.id))
+                    );
+                    this.sprints = allSprints.flat();
+                } else {
+                    this.sprints = [];
+                }
+                
+                // Load labels (demo data for now)
+                this.allLabels = [
+                    { id: '1', name: 'Bug', color: '#ef4444' },
+                    { id: '2', name: 'Feature', color: '#22c55e' },
+                    { id: '3', name: 'Enhancement', color: '#3b82f6' },
+                    { id: '4', name: 'Documentation', color: '#8b5cf6' },
+                    { id: '5', name: 'Testing', color: '#f59e0b' },
+                    { id: '6', name: 'Urgent', color: '#dc2626' },
+                    { id: '7', name: 'Low Priority', color: '#6b7280' },
+                    { id: '8', name: 'Research', color: '#06b6d4' }
+                ];
+                
+                console.log(`[loadModuleData] Loaded ${this.tasks.length} tasks, ${this.projects.length} projects, and ${this.sprints.length} sprints`);
                 
                 // Update search/filter integration with new tasks
                 if (TaskSearchAndFilterIntegration.integration) {
@@ -2030,7 +2260,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             assignee: '',
             assignee_id: null,
             project_id: this.projects[0]?.id || null,
-            labels: [] // Always return empty array
+            sprint_id: null,
+            labels: [], // Always return empty array
+            time_estimate: null,
+            time_spent: 0
         };
     }
 
@@ -2051,6 +2284,18 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             [field]: value
         };
         this.requestUpdate();
+    }
+
+    handleQuickTimeClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const button = event.currentTarget;
+        const field = button.dataset.timeField;
+        const hours = parseFloat(button.dataset.hours);
+        
+        this.updateNewTaskData(field, hours);
+        this.updateModalContent();
     }
 
     handleQuickDateClick(event) {
@@ -2105,6 +2350,27 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         }
     }
 
+    handleQuickTimeClickEdit(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const button = event.currentTarget;
+        const field = button.dataset.timeField;
+        const hours = parseFloat(button.dataset.hours);
+        
+        // Update the editing task data
+        this.editingTask[field] = hours;
+        
+        // Update the input field in the modal
+        const timeInput = document.querySelector(`#modal-task-edit input[data-field="${field}"]`);
+        if (timeInput) {
+            timeInput.value = hours;
+        }
+        
+        // Update the modal content to reflect the change
+        this.updateEditModalContent();
+    }
+
     renderDueDateBadge(task) {
         if (!task.due_date) {
             return '';
@@ -2118,6 +2384,76 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             <span class="due-date-badge ${status}">
                 ${icon}
                 ${text}
+            </span>
+        `;
+    }
+
+    renderTimeTrackingBadge(task) {
+        if (!task.time_estimate && !task.time_spent) {
+            return '';
+        }
+
+        const formatTime = (hours) => {
+            if (!hours) return '0h';
+            const h = Math.floor(hours);
+            const m = Math.round((hours - h) * 60);
+            if (h === 0) return `${m}m`;
+            if (m === 0) return `${h}h`;
+            return `${h}h ${m}m`;
+        };
+
+        const progress = task.time_estimate ? (task.time_spent / task.time_estimate) * 100 : 0;
+        const isOverdue = progress > 100;
+
+        return html`
+            <div class="time-tracking-badge">
+                ${task.time_spent !== undefined && task.time_spent !== null ? html`
+                    <span class="time-spent ${isOverdue ? 'overdue' : ''}">
+                        <svg class="time-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        ${formatTime(task.time_spent)}
+                    </span>
+                ` : ''}
+                ${task.time_estimate ? html`
+                    <span class="time-estimate">
+                        <svg class="time-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        ${formatTime(task.time_estimate)}
+                    </span>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    renderSprintBadge(task) {
+        if (!task.sprint_id) {
+            return '';
+        }
+
+        // Find the sprint from loaded sprints (if available)
+        const sprint = this.sprints?.find(s => s.id === task.sprint_id);
+        if (!sprint) {
+            return '';
+        }
+
+        const now = new Date();
+        const start = new Date(sprint.start_date);
+        const end = new Date(sprint.end_date);
+        
+        let status = 'active';
+        if (now < start) status = 'upcoming';
+        if (now > end) status = 'completed';
+
+        return html`
+            <span class="sprint-badge ${status}">
+                <svg class="sprint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+                ${sprint.name}
             </span>
         `;
     }
@@ -2252,24 +2588,49 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     closeTaskModal() {
         this.showTaskCreationModal = false;
         this.newTaskData = this.getEmptyTaskData();
+        this.showLabelDropdownCreate = false;
         ModalPortal.destroy(this.modalId);
         this.requestUpdate();
     }
 
     renderModalInPortal() {
         if (!this.showTaskCreationModal) {
-            ModalPortal.destroy(this.modalId);
+            ModalPortal.destroy('task-creation-modal');
             return;
         }
 
+        // Ensure we're using the create modal ID
+        const createModalId = 'task-creation-modal';
+        
         // Get modal HTML content
         const modalContent = this.getModalContent();
         
         // Create modal in portal
-        ModalPortal.create(this.modalId, modalContent);
+        ModalPortal.create(createModalId, modalContent);
         
-        // Attach event listeners
-        ModalPortal.attachListeners(this.modalId, {
+        // Log the modal content to verify buttons exist
+        console.log('[DEBUG] Modal rendered, checking for buttons...');
+        console.log('[DEBUG] window.taskManagementModule exists:', !!window.taskManagementModule);
+        console.log('[DEBUG] this === window.taskManagementModule:', this === window.taskManagementModule);
+        
+        setTimeout(() => {
+            const createAddLabelBtn = document.querySelector('.create-add-label-btn');
+            console.log('[DEBUG] Found create-add-label-btn:', !!createAddLabelBtn);
+            if (createAddLabelBtn) {
+                console.log('[DEBUG] Button classes:', createAddLabelBtn.className);
+                console.log('[DEBUG] Button style:', createAddLabelBtn.getAttribute('style'));
+                console.log('[DEBUG] Button computed style background:', window.getComputedStyle(createAddLabelBtn).backgroundColor);
+                
+                // Try manually adding a click listener to debug
+                createAddLabelBtn.addEventListener('click', (e) => {
+                    console.log('[DEBUG] Manual click listener fired!');
+                    e.stopPropagation();
+                });
+            }
+        }, 100);
+        
+        // Attach event listeners for CREATE modal
+        ModalPortal.attachListeners(createModalId, {
             '.task-creation-modal-overlay': {
                 'click': (e) => {
                     if (e.target.classList.contains('task-creation-modal-overlay')) {
@@ -2288,10 +2649,24 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             },
             'input[data-field], textarea[data-field], select[data-field]': {
                 'input': (e) => this.updateNewTaskData(e.target.dataset.field, e.target.value),
-                'change': (e) => this.updateNewTaskData(e.target.dataset.field, e.target.value)
+                'change': (e) => {
+                    this.updateNewTaskData(e.target.dataset.field, e.target.value);
+                    // If project changed, update sprint selector
+                    if (e.target.dataset.field === 'project_id') {
+                        const sprintContainer = document.querySelector('#create-sprint-container task-sprint-module');
+                        if (sprintContainer) {
+                            sprintContainer.projectId = e.target.value;
+                            sprintContainer.selectedSprintId = null;
+                            this.newTaskData.sprint_id = null;
+                        }
+                    }
+                }
             },
             '.quick-date-btn': {
                 'click': (e) => this.handleQuickDateClick(e)
+            },
+            '.quick-time-btn': {
+                'click': (e) => this.handleQuickTimeClick(e)
             },
             '.priority-option': {
                 'click': (e) => {
@@ -2305,12 +2680,58 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             },
             '.label-remove': {
                 'click': (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    this.removeLabel(index);
-                    this.updateModalContent();
+                    const labelId = e.currentTarget.dataset.labelId;
+                    if (labelId) {
+                        this.removeLabelFromTaskCreate(labelId);
+                    } else {
+                        const index = parseInt(e.currentTarget.dataset.index);
+                        this.removeLabel(index);
+                        this.updateModalContent();
+                    }
+                }
+            },
+            '.create-add-label-btn': {
+                'click': (e) => {
+                    console.log('[DEBUG] Add Label button clicked in create modal');
+                    console.log('[DEBUG] Current dropdown state:', this.showLabelDropdownCreate);
+                    e.stopPropagation();
+                    this.showLabelDropdownCreate = !this.showLabelDropdownCreate;
+                    console.log('[DEBUG] New dropdown state:', this.showLabelDropdownCreate);
+                    this.updateCreateModalContent();
+                }
+            },
+            '.create-label-option': {
+                'click': (e) => {
+                    const labelId = e.currentTarget.dataset.labelId;
+                    if (labelId) {
+                        this.addLabelToTaskCreate(labelId);
+                    }
+                }
+            },
+            '.create-labels-input': {
+                'click': (e) => {
+                    if (e.target.classList.contains('create-labels-input')) {
+                        this.showLabelDropdownCreate = !this.showLabelDropdownCreate;
+                        this.updateCreateModalContent();
+                    }
                 }
             }
         });
+
+        // Initialize sprint selector in create modal
+        setTimeout(() => {
+            const sprintContainer = document.querySelector('#create-sprint-container');
+            if (sprintContainer) {
+                const sprintModule = document.createElement('task-sprint-module');
+                sprintModule.selectedSprintId = this.newTaskData.sprint_id;
+                sprintModule.projectId = this.newTaskData.project_id;
+                sprintModule.addEventListener('sprint-selected', (e) => {
+                    this.newTaskData.sprint_id = e.detail.sprintId;
+                });
+                sprintContainer.innerHTML = '';
+                sprintContainer.appendChild(sprintModule);
+            }
+        }, 0);
     }
 
     updateModalContent() {
@@ -2382,7 +2803,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 10000;
+                z-index: 10001;
                 backdrop-filter: blur(4px);
             }
             
@@ -2392,11 +2813,14 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 border-radius: 12px;
                 width: 600px;
                 max-width: 90vw;
-                height: 90vh;
-                max-height: 900px;
+                height: auto;
+                max-height: 85vh;
+                margin: 20px auto;
                 display: flex;
                 flex-direction: column;
                 box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+                overflow: hidden;
+                position: relative;
             }
             
             .modal-header {
@@ -2432,7 +2856,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             .modal-body {
                 padding: 24px;
                 overflow-y: auto;
-                flex: 1;
+                flex: 1 1 auto;
+                min-height: 0;
                 scrollbar-width: thin;
                 scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
             }
@@ -2568,6 +2993,87 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 display: flex;
                 align-items: center;
                 gap: 4px;
+            }
+            
+            .task-labels {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-top: 8px;
+            }
+            
+            .label-chip {
+                display: inline-flex;
+                align-items: center;
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 500;
+                gap: 4px;
+            }
+            
+            .label-chip .label-remove {
+                cursor: pointer;
+                opacity: 0.8;
+                font-size: 14px;
+                line-height: 1;
+            }
+            
+            .label-chip .label-remove:hover {
+                opacity: 1;
+            }
+            
+            .add-label-btn {
+                background: transparent;
+                border: 1px dashed rgba(255, 255, 255, 0.3);
+                color: rgba(255, 255, 255, 0.6);
+                padding: 4px 10px;
+                border-radius: 16px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .add-label-btn:hover {
+                border-color: rgba(255, 255, 255, 0.5);
+                color: rgba(255, 255, 255, 0.8);
+            }
+            
+            .label-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                margin-top: 4px;
+                background: rgba(30, 30, 30, 0.95);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 6px;
+                padding: 8px;
+                z-index: 10002;
+                max-height: 200px;
+                overflow-y: auto;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            }
+            
+            .label-option {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            
+            .label-option:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .label-color-dot {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                flex-shrink: 0;
             }
             
             .label-remove {
@@ -2718,7 +3224,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
             </div>
             
-            <!-- Project Row -->
+            <!-- Project and Sprint Row -->
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Project</label>
@@ -2733,27 +3239,24 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
                 
                 <div class="form-group">
-                    <!-- Empty for spacing -->
+                    <label class="form-label">Sprint</label>
+                    <div id="create-sprint-container">
+                        ${TaskSprintModule.renderSprintSelector(this.newTaskData.sprint_id, this.newTaskData.project_id)}
+                    </div>
                 </div>
             </div>
             
             <!-- Labels -->
             <div class="form-group">
                 <label class="form-label">Labels</label>
-                <div class="labels-input">
-                    ${this.newTaskData.labels.map((label, index) => `
-                        <span class="label-tag">
-                            ${escapeHtml(label)}
-                            <span class="label-remove" data-index="${index}">×</span>
-                        </span>
-                    `).join('')}
-                    <input 
-                        type="text" 
-                        class="label-input-field"
-                        placeholder="Add label..."
-                    />
-                </div>
+                ${this.renderLabelSelectorForCreate(this.newTaskData.labels || [])}
             </div>
+            
+            <!-- Time Tracking -->
+            ${TaskTimeTrackingModule.renderTimeTrackingFields(
+                this.newTaskData.time_estimate || 0,
+                this.newTaskData.time_spent || 0
+            )}
         `;
     }
     
@@ -3095,6 +3598,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
                 
                 <div class="toolbar-right">
+                    <button class="template-button" @click=${() => this.openLabelManagement()} title="Manage Labels">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 7h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"></path>
+                            <path d="M5 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Labels
+                    </button>
                     <button class="template-button" @click=${() => this.templatePanelOpen = true} title="Task Templates">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7" />
@@ -3241,6 +3751,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     
                     ${this.renderDueDateBadge(task)}
                     
+                    ${this.renderTimeTrackingBadge(task)}
+                    
+                    ${this.renderSprintBadge(task)}
+                    
                     ${this.renderAssigneeAvatar(task)}
                     
                     <button class="ai-insights-button" 
@@ -3252,6 +3766,12 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </svg>
                     </button>
                 </div>
+                
+                ${task.labels && task.labels.length > 0 ? html`
+                    <div class="task-labels">
+                        ${TaskLabelModule.renderLabelChips(task.labels, this.allLabels)}
+                    </div>
+                ` : ''}
                 
                 <!-- Due date overlay for overdue/urgent tasks -->
                 ${this.renderDueDateOverlay(task)}
@@ -3496,15 +4016,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     renderEditModalInPortal() {
         if (!this.showEditModal || !this.editingTask) {
-            ModalPortal.destroy(this.modalId);
+            ModalPortal.destroy('task-edit-modal');
             return;
         }
 
+        const editModalId = 'task-edit-modal';
         const modalContent = this.getEditModalContent();
-        ModalPortal.create(this.modalId, modalContent);
+        ModalPortal.create(editModalId, modalContent);
         
-        // Attach event listeners
-        ModalPortal.attachListeners(this.modalId, {
+        // Attach event listeners for EDIT modal
+        ModalPortal.attachListeners(editModalId, {
             '.task-edit-modal-overlay': {
                 'click': (e) => {
                     if (e.target.classList.contains('task-edit-modal-overlay')) {
@@ -3527,10 +4048,22 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 },
                 'change': (e) => {
                     this.editingTask[e.target.dataset.field] = e.target.value;
+                    // If project changed, update sprint selector
+                    if (e.target.dataset.field === 'project_id') {
+                        const sprintContainer = document.querySelector('#edit-sprint-container task-sprint-module');
+                        if (sprintContainer) {
+                            sprintContainer.projectId = e.target.value;
+                            sprintContainer.selectedSprintId = null;
+                            this.editingTask.sprint_id = null;
+                        }
+                    }
                 }
             },
             '.quick-date-btn': {
                 'click': (e) => this.handleQuickDateClickEdit(e)
+            },
+            '.quick-time-btn': {
+                'click': (e) => this.handleQuickTimeClickEdit(e)
             },
             '.priority-option': {
                 'click': (e) => {
@@ -3544,9 +4077,40 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             },
             '.label-remove': {
                 'click': (e) => {
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    this.removeEditLabel(index);
+                    const labelId = e.currentTarget.dataset.labelId;
+                    if (labelId) {
+                        this.removeLabelFromTaskEdit(labelId);
+                    } else {
+                        const index = parseInt(e.currentTarget.dataset.index);
+                        this.removeEditLabel(index);
+                        this.updateEditModalContent();
+                    }
+                }
+            },
+            '.edit-add-label-btn': {
+                'click': (e) => {
+                    console.log('[DEBUG] Add Label button clicked in edit modal');
+                    console.log('[DEBUG] Current dropdown state:', this.showLabelDropdownEdit);
+                    e.stopPropagation();
+                    this.showLabelDropdownEdit = !this.showLabelDropdownEdit;
+                    console.log('[DEBUG] New dropdown state:', this.showLabelDropdownEdit);
                     this.updateEditModalContent();
+                }
+            },
+            '.edit-label-option': {
+                'click': (e) => {
+                    const labelId = e.currentTarget.dataset.labelId;
+                    if (labelId) {
+                        this.addLabelToTaskEdit(labelId);
+                    }
+                }
+            },
+            '.edit-labels-input': {
+                'click': (e) => {
+                    if (e.target.classList.contains('edit-labels-input')) {
+                        this.showLabelDropdownEdit = !this.showLabelDropdownEdit;
+                        this.updateEditModalContent();
+                    }
                 }
             }
         });
@@ -3556,8 +4120,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         
         // Render assignee selector in the edit modal
         setTimeout(() => {
-            const container = document.querySelector('#edit-assignee-container');
-            if (container) {
+            const assigneeContainer = document.querySelector('#edit-assignee-container');
+            if (assigneeContainer) {
                 const assigneeModule = document.createElement('task-assignee-module');
                 assigneeModule.selectedAssigneeId = this.editingTask.assignee_id;
                 assigneeModule.addEventListener('assignee-selected', (e) => {
@@ -3566,8 +4130,21 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 assigneeModule.addEventListener('assignee-removed', () => {
                     this.editingTask.assignee_id = null;
                 });
-                container.innerHTML = '';
-                container.appendChild(assigneeModule);
+                assigneeContainer.innerHTML = '';
+                assigneeContainer.appendChild(assigneeModule);
+            }
+
+            // Render sprint selector in the edit modal
+            const sprintContainer = document.querySelector('#edit-sprint-container');
+            if (sprintContainer) {
+                const sprintModule = document.createElement('task-sprint-module');
+                sprintModule.selectedSprintId = this.editingTask.sprint_id;
+                sprintModule.projectId = this.editingTask.project_id;
+                sprintModule.addEventListener('sprint-selected', (e) => {
+                    this.editingTask.sprint_id = e.detail.sprintId;
+                });
+                sprintContainer.innerHTML = '';
+                sprintContainer.appendChild(sprintModule);
             }
         }, 0);
     }
@@ -3575,8 +4152,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     closeEditModal() {
         this.showEditModal = false;
         this.editingTask = null;
-        ModalPortal.destroy(this.modalId);
-        this.modalId = 'task-creation-modal';
+        this.showLabelDropdownEdit = false;
+        ModalPortal.destroy('task-edit-modal');
         this.requestUpdate();
         // Clear task selection
         taskEventBus.emit(TASK_EVENTS.TASK_SELECTED, { taskId: null });
@@ -3790,35 +4367,29 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 </div>
             </div>
             
-            <!-- Assignee Row -->
+            <!-- Sprint and Assignee Row -->
             <div class="form-row">
-                <div class="form-group" style="flex: 1;">
+                <div class="form-group">
+                    <label class="form-label">Sprint</label>
+                    <div id="edit-sprint-container">
+                        ${TaskSprintModule.renderSprintSelector(task.sprint_id, task.project_id)}
+                    </div>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Assignee</label>
                     <div id="edit-assignee-container">
                         <!-- Assignee selector will be rendered here -->
                     </div>
                 </div>
-                <div class="form-group">
-                    <!-- Empty for spacing -->
-                </div>
             </div>
+            
+            <!-- Time Tracking -->
+            ${TaskTimeTrackingModule.renderTimeTrackingFields(task.time_estimate || 0, task.time_spent || 0)}
             
             <!-- Labels -->
             <div class="form-group">
                 <label class="form-label">Labels</label>
-                <div class="labels-input">
-                    ${(task.labels || []).map((label, index) => `
-                        <span class="label-tag">
-                            ${escapeHtml(label)}
-                            <span class="label-remove" data-index="${index}">×</span>
-                        </span>
-                    `).join('')}
-                    <input 
-                        type="text" 
-                        class="label-input-field"
-                        placeholder="Add label..."
-                    />
-                </div>
+                ${this.renderLabelSelectorForEdit(task.labels || [])}
             </div>
         `;
     }
@@ -3923,6 +4494,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     <div class="list-col" style="flex: 3;">Task</div>
                     <div class="list-col" style="flex: 1;">Status</div>
                     <div class="list-col" style="flex: 1;">Priority</div>
+                    <div class="list-col" style="flex: 1;">Time</div>
                     <div class="list-col" style="flex: 1;">Assignee</div>
                     <div class="list-col" style="flex: 0.5;">Actions</div>
                 </div>
@@ -3949,6 +4521,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                                 ` : ''}
                             </div>
                             <div class="list-col" style="flex: 1;">
+                                ${this.renderTimeTrackingBadge(task)}
+                            </div>
+                            <div class="list-col" style="flex: 1;">
                                 ${this.renderAssigneeAvatar(task)}
                             </div>
                             <div class="list-col" style="flex: 0.5;">
@@ -3972,115 +4547,6 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         return tasksToFilter.filter(task => task.status === status);
     }
 
-    // Task Templates System
-    getTaskTemplates() {
-        return [
-            {
-                id: 'bug-fix',
-                name: 'Bug Fix',
-                category: 'Development',
-                icon: '🐛',
-                description: 'Fix reported platform bug',
-                template: {
-                    title: 'Fix: [Bug Description]',
-                    description: `Bug Fix Process:
-1. Reproduce the issue
-2. Identify root cause
-3. Implement fix
-4. Test solution
-5. Deploy to staging
-6. Verify in production`,
-                    priority: 'high',
-                    status: 'todo',
-                    labels: 'bug,development,platform',
-                    checklist: [
-                        'Bug reproduced',
-                        'Root cause identified',
-                        'Fix implemented',
-                        'Tests passing',
-                        'Deployed to production'
-                    ]
-                }
-            },
-            {
-                id: 'client-onboarding',
-                name: 'Client Onboarding',
-                category: 'Client Success',
-                icon: '🏫',
-                description: 'Onboard new school/institution',
-                template: {
-                    title: 'Onboard: [School Name]',
-                    description: 'Complete client onboarding process',
-                    priority: 'high',
-                    status: 'todo',
-                    labels: 'client,onboarding,school',
-                    checklist: [
-                        'Initial meeting completed',
-                        'Account setup',
-                        'Admin training scheduled',
-                        'Student accounts created',
-                        'First AI session verified'
-                    ]
-                }
-            },
-            {
-                id: 'feature-development',
-                name: 'New Feature',
-                category: 'Development',
-                icon: '✨',
-                description: 'Implement new platform feature',
-                template: {
-                    title: 'Feature: [Feature Name]',
-                    description: 'Develop and deploy new feature',
-                    priority: 'medium',
-                    status: 'todo',
-                    labels: 'feature,development,platform'
-                }
-            },
-            {
-                id: 'support-ticket',
-                name: 'Support Ticket',
-                category: 'Support',
-                icon: '🎫',
-                description: 'Handle customer support request',
-                template: {
-                    title: 'Support: [Issue Summary]',
-                    description: 'Resolve customer support ticket',
-                    priority: 'medium',
-                    status: 'todo',
-                    labels: 'support,customer,ticket'
-                }
-            },
-            {
-                id: 'ai-improvement',
-                name: 'AI Tutor Enhancement',
-                category: 'AI/ML',
-                icon: '🤖',
-                description: 'Improve AI tutoring based on feedback',
-                template: {
-                    title: 'AI: [Enhancement Description]',
-                    description: 'Implement AI tutoring improvement based on platform feedback',
-                    priority: 'medium',
-                    status: 'todo',
-                    labels: 'ai,improvement,feedback'
-                }
-            },
-            {
-                id: 'performance-optimization',
-                name: 'Performance Fix',
-                category: 'Infrastructure',
-                icon: '⚡',
-                description: 'Optimize platform performance',
-                template: {
-                    title: 'Perf: [Area to Optimize]',
-                    description: 'Improve system performance and response times',
-                    priority: 'medium',
-                    status: 'todo',
-                    labels: 'performance,optimization,infrastructure'
-                }
-            }
-        ];
-    }
 
     // Virtual Scrolling for Performance
     initializeVirtualScrolling() {
@@ -4421,20 +4887,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         <!-- Labels -->
                         <div class="form-group">
                             <label class="form-label">Labels</label>
-                            <div class="labels-input" @click=${(e) => this.focusLabelInput(e)}>
-                                ${this.newTaskData.labels.map((label, index) => html`
-                                    <span class="label-tag">
-                                        ${label}
-                                        <span class="label-remove" @click=${() => this.removeLabel(index)}>×</span>
-                                    </span>
-                                `)}
-                                <input 
-                                    type="text" 
-                                    class="label-input-field"
-                                    placeholder="Add label..."
-                                    @keydown=${(e) => this.handleLabelKeydown(e)}
-                                />
-                            </div>
+                            ${this.renderLabelSelector(this.newTaskData.labels || [])}
                         </div>
                     </div>
                     
@@ -4474,37 +4927,28 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             </svg>
                         </button>
                     </div>
-                    <div class="template-categories">
-                        ${this.renderTemplateCategories()}
+                    <div class="template-content">
+                        <task-template-module
+                            @template-selected=${this.handleTemplateSelected}
+                            @templates-updated=${this.handleTemplatesUpdated}
+                        ></task-template-module>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    renderTemplateCategories() {
-        const categories = {};
-        this.taskTemplates.forEach(template => {
-            if (!categories[template.category]) {
-                categories[template.category] = [];
-            }
-            categories[template.category].push(template);
-        });
-        
-        return Object.entries(categories).map(([category, templates]) => html`
-            <div class="template-category">
-                <h4>${category}</h4>
-                <div class="template-grid">
-                    ${templates.map(template => html`
-                        <div class="template-card" @click=${() => this.createFromTemplate(template)}>
-                            <div class="template-icon">${template.icon}</div>
-                            <div class="template-name">${template.name}</div>
-                            <div class="template-description">${template.description}</div>
-                        </div>
-                    `)}
-                </div>
-            </div>
-        `);
+
+    // Handle template selection from TaskTemplateModule
+    handleTemplateSelected(event) {
+        const template = event.detail.template;
+        this.createFromTemplate(template);
+    }
+
+    // Handle templates updated event
+    handleTemplatesUpdated(event) {
+        // Templates were updated in the module
+        console.log('[TaskManagement] Templates updated:', event.detail.templates);
     }
 
     async createFromTemplate(template) {
@@ -4519,21 +4963,32 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             description: template.template.description || '',
             status: template.template.status || 'todo',
             priority: template.template.priority || 'medium',
-            labels: Array.isArray(template.template.labels) ? [...template.template.labels] : [],
+            labels: Array.isArray(template.template.labels) 
+                ? [...template.template.labels] 
+                : (typeof template.template.labels === 'string' 
+                    ? template.template.labels.split(',').map(l => l.trim()).filter(Boolean)
+                    : []),
             due_date: template.template.due_date || '',
             project_id: this.projects[0]?.id || null,
             assignee_id: null,
+            time_estimate: template.template.time_estimate || null,
             created_from_template: template.id
         };
         
-        // Open the task creation modal with pre-filled data
-        this.showTaskCreationModal = true;
+        // Force update to close template panel
+        await this.requestUpdate();
         
-        // Force update to ensure UI refreshes
-        this.requestUpdate();
-        
-        // Render modal in portal after update
-        setTimeout(() => this.renderModalInPortal(), 0);
+        // Small delay to ensure template panel is closed
+        setTimeout(() => {
+            // Open the task creation modal with pre-filled data
+            this.showTaskCreationModal = true;
+            
+            // Force update to ensure UI refreshes
+            this.requestUpdate();
+            
+            // Render modal in portal after update
+            setTimeout(() => this.renderModalInPortal(), 0);
+        }, 100);
         
         // Show a hint about the template
         this.showKeyboardHint(`📋 Using template: ${template.name}`);
@@ -4618,6 +5073,248 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 `)}
             </div>
         `;
+    }
+    
+    showLabelDropdown(isEditMode = false) {
+        console.log('[DEBUG] showLabelDropdown called, isEditMode:', isEditMode);
+        console.log('[DEBUG] Current labelDropdownOpen state:', this.labelDropdownOpen);
+        this.labelDropdownOpen = true;
+        console.log('[DEBUG] Set labelDropdownOpen to true');
+        
+        // Close dropdown when clicking outside
+        setTimeout(() => {
+            const closeDropdown = (e) => {
+                if (!e.target.closest('.labels-input')) {
+                    console.log('[DEBUG] Closing dropdown - clicked outside');
+                    this.labelDropdownOpen = false;
+                    document.removeEventListener('click', closeDropdown);
+                    if (isEditMode) {
+                        this.updateEditModalContent();
+                    } else {
+                        this.requestUpdate();
+                    }
+                }
+            };
+            document.addEventListener('click', closeDropdown);
+        }, 0);
+    }
+    
+    addLabelToTask(labelId, isEditMode = false) {
+        const targetTask = isEditMode ? this.editingTask : this.newTaskData;
+        if (!targetTask.labels) {
+            targetTask.labels = [];
+        }
+        if (!targetTask.labels.includes(labelId)) {
+            targetTask.labels = [...targetTask.labels, labelId];
+        }
+        this.labelDropdownOpen = false;
+        
+        if (isEditMode) {
+            this.updateEditModalContent();
+        } else {
+            this.requestUpdate();
+        }
+    }
+    
+    removeLabelFromTask(labelId, isEditMode = false) {
+        const targetTask = isEditMode ? this.editingTask : this.newTaskData;
+        if (targetTask.labels) {
+            targetTask.labels = targetTask.labels.filter(id => id !== labelId);
+            if (isEditMode) {
+                this.updateEditModalContent();
+            } else {
+                this.requestUpdate();
+            }
+        }
+    }
+    
+    renderLabelSelector(selectedLabels = [], isEditMode = false) {
+        return html`
+            <div class="labels-input" @click=${(e) => e.target.classList.contains('labels-input') && this.showLabelDropdown(isEditMode)}>
+                ${selectedLabels.map((labelId) => {
+                    const label = this.allLabels.find(l => l.id === labelId || l.name === labelId);
+                    if (!label) return '';
+                    
+                    return html`
+                        <span class="label-chip" style="background: ${label.color}; color: white;">
+                            ${label.name}
+                            <span class="label-remove" @click=${() => this.removeLabelFromTask(labelId, isEditMode)}>×</span>
+                        </span>
+                    `;
+                })}
+                <button type="button" class="add-label-btn" @click=${() => this.showLabelDropdown(isEditMode)}>
+                    + Add Label
+                </button>
+                ${this.labelDropdownOpen ? html`
+                    <div class="label-dropdown">
+                        ${this.allLabels.filter(label => 
+                            !selectedLabels.includes(label.id) && !selectedLabels.includes(label.name)
+                        ).map(label => html`
+                            <div class="label-option" @click=${() => this.addLabelToTask(label.id, isEditMode)}>
+                                <span class="label-color-dot" style="background: ${label.color}"></span>
+                                ${label.name}
+                            </div>
+                        `)}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    renderLabelSelectorForEdit(selectedLabels = []) {
+        // HTML string version for edit modal
+        const availableLabels = this.allLabels.filter(label => 
+            !selectedLabels.includes(label.id) && !selectedLabels.includes(label.name)
+        );
+        
+        return `
+            <div class="labels-input edit-labels-input">
+                ${selectedLabels.map((labelId) => {
+                    const label = this.allLabels.find(l => l.id === labelId || l.name === labelId);
+                    if (!label) return '';
+                    
+                    return `
+                        <span class="label-chip" style="background: ${label.color}; color: white;">
+                            ${label.name}
+                            <span class="label-remove" data-label-id="${labelId}">×</span>
+                        </span>
+                    `;
+                }).join('')}
+                <button type="button" class="add-label-btn edit-add-label-btn">
+                    + Add Label
+                </button>
+                ${this.showLabelDropdownEdit ? `
+                    <div class="label-dropdown">
+                        ${availableLabels.map(label => `
+                            <div class="label-option edit-label-option" data-label-id="${label.id}">
+                                <span class="label-color-dot" style="background: ${label.color}"></span>
+                                ${label.name}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    addLabelToTaskEdit(labelId) {
+        if (!this.editingTask.labels) {
+            this.editingTask.labels = [];
+        }
+        if (!this.editingTask.labels.includes(labelId)) {
+            this.editingTask.labels = [...this.editingTask.labels, labelId];
+        }
+        this.showLabelDropdownEdit = false;
+        this.updateEditModalContent();
+    }
+    
+    removeLabelFromTaskEdit(labelId) {
+        if (this.editingTask.labels) {
+            this.editingTask.labels = this.editingTask.labels.filter(id => id !== labelId);
+            this.updateEditModalContent();
+        }
+    }
+    
+    renderLabelSelectorForCreate(selectedLabels = []) {
+        // HTML string version for create modal
+        const availableLabels = this.allLabels.filter(label => 
+            !selectedLabels.includes(label.id) && !selectedLabels.includes(label.name)
+        );
+        
+        console.log('[DEBUG] Rendering label selector for create');
+        console.log('[DEBUG] Selected labels:', selectedLabels);
+        console.log('[DEBUG] Available labels:', availableLabels);
+        console.log('[DEBUG] showLabelDropdownCreate:', this.showLabelDropdownCreate);
+        
+        return `
+            <div class="labels-input create-labels-input">
+                ${selectedLabels.map((labelId) => {
+                    const label = this.allLabels.find(l => l.id === labelId || l.name === labelId);
+                    if (!label) return '';
+                    
+                    return `
+                        <span class="label-chip" style="background: ${label.color}; color: white;">
+                            ${label.name}
+                            <span class="label-remove" data-label-id="${labelId}">×</span>
+                        </span>
+                    `;
+                }).join('')}
+                <button type="button" class="add-label-btn create-add-label-btn" style="background: transparent !important;">
+                    + Add Label
+                </button>
+                ${this.showLabelDropdownCreate ? `
+                    <div class="label-dropdown">
+                        ${availableLabels.map(label => `
+                            <div class="label-option create-label-option" data-label-id="${label.id}">
+                                <span class="label-color-dot" style="background: ${label.color}"></span>
+                                ${label.name}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    addLabelToTaskCreate(labelId) {
+        if (!this.newTaskData.labels) {
+            this.newTaskData.labels = [];
+        }
+        if (!this.newTaskData.labels.includes(labelId)) {
+            this.newTaskData.labels = [...this.newTaskData.labels, labelId];
+        }
+        this.showLabelDropdownCreate = false;
+        this.updateCreateModalContent();
+    }
+    
+    removeLabelFromTaskCreate(labelId) {
+        if (this.newTaskData.labels) {
+            this.newTaskData.labels = this.newTaskData.labels.filter(id => id !== labelId);
+            this.updateCreateModalContent();
+        }
+    }
+    
+    updateCreateModalContent() {
+        if (ModalPortal.exists(this.modalId)) {
+            const modalContent = this.getModalContent();
+            ModalPortal.update(this.modalId, modalContent);
+            // Re-attach listeners after update
+            this.renderModalInPortal();
+        }
+    }
+    
+    openLabelManagement() {
+        // For now, show an alert with instructions
+        // In production, this would navigate to the label management view
+        alert('Label Management:\n\nTo manage labels, click on the Labels button to see all available labels. You can add labels to tasks by clicking the "+ Add Label" button when creating or editing a task.\n\nCurrently available labels:\n' + 
+            this.allLabels.map(l => `• ${l.name}`).join('\n'));
+    }
+    
+    enterSelectionMode() {
+        // Enable multi-select mode
+        this.selectedTasks = [];
+        this.showKeyboardHint('📌 Selection mode active - Click tasks to select, Shift+Click for range');
+        
+        // Add visual indicator that we're in selection mode
+        this.requestUpdate();
+        
+        // Auto-hide hint after 3 seconds
+        setTimeout(() => this.hideKeyboardHint(), 3000);
+    }
+    
+    selectAllTasks() {
+        // Select all currently visible tasks
+        const visibleTasks = this.currentView === 'kanban' 
+            ? this.tasks 
+            : this.tasks; // In list view, might be filtered
+            
+        this.selectedTasks = visibleTasks.map(task => task.id);
+        
+        this.showKeyboardHint(`✓ Selected ${this.selectedTasks.length} tasks`);
+        setTimeout(() => this.hideKeyboardHint(), 2000);
+        
+        // Trigger update to show selection
+        this.requestUpdate();
     }
     
 }

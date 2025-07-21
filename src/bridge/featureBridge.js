@@ -124,6 +124,12 @@ module.exports = {
     ipcMain.handle('lims:getTaskMetrics', async (event, period) => await limsService.getTaskMetrics(period));
     ipcMain.handle('lims:closeDashboard', async () => limsService.closeDashboard());
     
+    // Task Templates
+    ipcMain.handle('lims:getTaskTemplates', async () => await limsService.getTaskTemplates());
+    ipcMain.handle('lims:createTaskTemplate', async (event, template) => await limsService.createTaskTemplate(template));
+    ipcMain.handle('lims:updateTaskTemplate', async (event, id, updates) => await limsService.updateTaskTemplate(id, updates));
+    ipcMain.handle('lims:deleteTaskTemplate', async (event, id) => await limsService.deleteTaskTemplate(id));
+    
     // Comments and Activities
     ipcMain.handle('lims:getTaskComments', async (event, taskId) => await limsService.getTaskComments(taskId));
     ipcMain.handle('lims:addTaskComment', async (event, taskId, commentData) => await limsService.addTaskComment(taskId, commentData));

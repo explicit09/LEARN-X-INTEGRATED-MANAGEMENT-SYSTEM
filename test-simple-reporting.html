@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Reporting Module</title>
+    <script type="module">
+        import { html, css, LitElement } from './src/ui/assets/lit-core-2.7.4.min.js';
+        
+        // Simple test component
+        class TestReporting extends LitElement {
+            static styles = css`
+                :host {
+                    display: block;
+                    padding: 20px;
+                    background: #333;
+                    color: white;
+                }
+                h1 {
+                    color: #007aff;
+                }
+            `;
+            
+            render() {
+                return html`
+                    <h1>Test Reporting Module</h1>
+                    <p>If you can see this, the reporting module is rendering!</p>
+                    <p>Current time: ${new Date().toLocaleString()}</p>
+                `;
+            }
+        }
+        
+        customElements.define('test-reporting', TestReporting);
+    </script>
+</head>
+<body style="background: #222; color: white; font-family: system-ui;">
+    <h2>Direct Test</h2>
+    <test-reporting></test-reporting>
+    
+    <h2>In Container</h2>
+    <div style="border: 1px solid #666; padding: 10px;">
+        <test-reporting></test-reporting>
+    </div>
+</body>
+</html>

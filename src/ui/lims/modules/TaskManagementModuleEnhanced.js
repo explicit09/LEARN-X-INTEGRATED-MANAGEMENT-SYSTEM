@@ -54,12 +54,24 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 flex-direction: column;
                 min-height: 0;
             }
+            
+            /* When in reporting view, change task-content overflow */
+            :host([data-view="reporting"]) .task-content {
+                overflow: visible !important;
+            }
 
             /* Reporting view specific styles */
-            task-reporting-module {
+            .reporting-view-container {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                width: 100%;
+            }
+            
+            .reporting-view-container task-reporting-module {
+                flex: 1;
                 display: block;
                 width: 100%;
-                height: 100%;
                 overflow-y: auto;
             }
 
@@ -1743,7 +1755,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
 
     static properties = {
         ...LIMSModule.properties,
-        currentView: { type: String },
+        currentView: { type: String, attribute: false },
         tasks: { type: Array },
         projects: { type: Array },
         sprints: { type: Array },
@@ -1854,6 +1866,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         super.connectedCallback();
         // Store reference for edit modal
         window.taskManagementModule = this;
+        
+        // Set initial data-view attribute for CSS
+        this.setAttribute('data-view', this.currentView);
+        
         // Set up keyboard event listeners
         document.addEventListener('keydown', this.handleGlobalKeyDown);
         
@@ -1964,6 +1980,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         const indicator = document.getElementById('lims-shortcut-indicator');
         if (indicator) {
             indicator.remove();
+        }
+    }
+
+    updated(changedProperties) {
+        super.updated(changedProperties);
+        if (changedProperties.has('currentView')) {
+            console.log('[TaskMgmt] View updated from', changedProperties.get('currentView'), 'to', this.currentView);
+            // Set data attribute for CSS styling
+            this.setAttribute('data-view', this.currentView);
         }
     }
 
@@ -3911,8 +3936,25 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         }
     }
 
+    // Removed render() override - reporting view is handled in renderModuleContent()
+    // This ensures proper integration with parent LIMSModule rendering flow
+
     // Render methods
     renderModuleContent() {
+        console.log('[renderModuleContent] Current view:', this.currentView);
+        
+        // If in reporting view, render it directly without the task management container
+        if (this.currentView === 'reporting') {
+            console.log('[TaskMgmt] Rendering reporting view directly');
+            return html`
+                <div class="reporting-view-container">
+                    ${this.renderToolbar()}
+                    <task-reporting-module></task-reporting-module>
+                </div>
+            `;
+        }
+        
+        // Otherwise render normal task management views
         // Get filtered tasks if integration is active
         const hasFilters = TaskSearchAndFilterIntegration.hasActiveFilters();
         let displayTasks = hasFilters 
@@ -3928,17 +3970,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             <div class="task-management-container">
                 ${this.renderCommandPalette()}
                 ${this.renderTemplatePanel()}
-                ${this.currentView !== 'reporting' ? TaskSearchAndFilterIntegration.renderSearchAndFilters() : ''}
+                ${TaskSearchAndFilterIntegration.renderSearchAndFilters()}
                 ${this.renderToolbar()}
                 <div class="task-content">
-                    ${this.currentView === 'reporting' ? 
-                        html`<task-reporting-module></task-reporting-module>` : 
-                        this.currentView === 'kanban' ? 
-                            this.renderEnhancedKanbanView(displayTasks) : 
-                            this.renderListView(displayTasks)
+                    ${this.currentView === 'kanban' ? 
+                        this.renderEnhancedKanbanView(displayTasks) : 
+                        this.renderListView(displayTasks)
                     }
                 </div>
-                ${this.currentView !== 'reporting' ? this.renderKeyboardHint() : ''}
+                ${this.renderKeyboardHint()}
                 ${this.renderSelectionCount()}
                 ${this.renderValidationErrors()}
             </div>
@@ -3995,7 +4035,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </button>
                         <button 
                             class="view-button ${this.currentView === 'reporting' ? 'active' : ''}"
-                            @click=${() => this.currentView = 'reporting'}
+                            @click=${() => {
+                                console.log('[TaskMgmt] Switching to reporting view');
+                                this.currentView = 'reporting';
+                                this.requestUpdate();
+                            }}
                         >
                             Reports
                         </button>

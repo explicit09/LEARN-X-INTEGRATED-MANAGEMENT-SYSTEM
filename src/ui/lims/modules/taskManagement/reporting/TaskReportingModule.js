@@ -1,6 +1,8 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
 import { TaskEventBus } from '../utils/TaskEventBus.js';
-import Chart from 'chart.js/auto';
+
+// Chart.js will be loaded dynamically to avoid import issues
+let Chart = null;
 
 /**
  * TaskReportingModule - Advanced reporting and analytics for task management
@@ -354,9 +356,22 @@ export class TaskReportingModule extends LitElement {
         this.charts = {};
     }
 
-    connectedCallback() {
+    async connectedCallback() {
         super.connectedCallback();
         console.log('[TaskReporting] Component connected');
+        
+        // Try to load Chart.js dynamically
+        if (!Chart) {
+            try {
+                console.log('[TaskReporting] Loading Chart.js...');
+                Chart = (await import('chart.js/auto')).default;
+                console.log('[TaskReporting] Chart.js loaded successfully');
+            } catch (error) {
+                console.error('[TaskReporting] Failed to load Chart.js:', error);
+                // Continue without charts - the module can still show data tables
+            }
+        }
+        
         this.loadReportData();
         
         // Listen for task updates

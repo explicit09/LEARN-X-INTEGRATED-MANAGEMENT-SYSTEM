@@ -55,24 +55,18 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 min-height: 0;
             }
             
-            /* When in reporting view, change task-content overflow */
-            :host([data-view="reporting"]) .task-content {
-                overflow: visible !important;
+            /* When in reporting view, change task-content to allow scrolling */
+            .task-content.reporting-view {
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
             }
 
             /* Reporting view specific styles */
-            .reporting-view-container {
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-                width: 100%;
-            }
-            
-            .reporting-view-container task-reporting-module {
-                flex: 1;
-                display: block;
-                width: 100%;
-                overflow-y: auto;
+            task-reporting-module {
+                display: block !important;
+                width: 100% !important;
+                min-height: 600px !important;
+                background: var(--background-primary, #1a1a1a);
             }
 
             .task-toolbar {
@@ -3943,18 +3937,6 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     renderModuleContent() {
         console.log('[renderModuleContent] Current view:', this.currentView);
         
-        // If in reporting view, render it directly without the task management container
-        if (this.currentView === 'reporting') {
-            console.log('[TaskMgmt] Rendering reporting view directly');
-            return html`
-                <div class="reporting-view-container">
-                    ${this.renderToolbar()}
-                    <task-reporting-module></task-reporting-module>
-                </div>
-            `;
-        }
-        
-        // Otherwise render normal task management views
         // Get filtered tasks if integration is active
         const hasFilters = TaskSearchAndFilterIntegration.hasActiveFilters();
         let displayTasks = hasFilters 
@@ -3970,15 +3952,26 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             <div class="task-management-container">
                 ${this.renderCommandPalette()}
                 ${this.renderTemplatePanel()}
-                ${TaskSearchAndFilterIntegration.renderSearchAndFilters()}
+                ${this.currentView !== 'reporting' ? TaskSearchAndFilterIntegration.renderSearchAndFilters() : ''}
                 ${this.renderToolbar()}
-                <div class="task-content">
-                    ${this.currentView === 'kanban' ? 
-                        this.renderEnhancedKanbanView(displayTasks) : 
-                        this.renderListView(displayTasks)
-                    }
+                <div class="task-content ${this.currentView === 'reporting' ? 'reporting-view' : ''}">
+                    ${(() => {
+                        console.log('[TaskMgmt] Rendering view:', this.currentView);
+                        if (this.currentView === 'reporting') {
+                            console.log('[TaskMgmt] Rendering reporting module');
+                            // Add debug check for custom element
+                            if (!customElements.get('task-reporting-module')) {
+                                console.error('[TaskMgmt] task-reporting-module not registered!');
+                            }
+                            return html`<task-reporting-module></task-reporting-module>`;
+                        } else if (this.currentView === 'kanban') {
+                            return this.renderEnhancedKanbanView(displayTasks);
+                        } else {
+                            return this.renderListView(displayTasks);
+                        }
+                    })()}
                 </div>
-                ${this.renderKeyboardHint()}
+                ${this.currentView !== 'reporting' ? this.renderKeyboardHint() : ''}
                 ${this.renderSelectionCount()}
                 ${this.renderValidationErrors()}
             </div>

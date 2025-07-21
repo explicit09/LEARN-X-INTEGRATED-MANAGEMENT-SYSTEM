@@ -209,6 +209,13 @@ export class TaskManagementModuleWithSearch extends TaskManagementModuleEnhanced
      * Override render to add search and filter UI
      */
     render() {
+        // If in reporting view, delegate to parent's renderModuleContent
+        if (this.currentView === 'reporting') {
+            console.log('[TaskManagementWithSearch] Delegating to parent for reporting view');
+            // Use the parent LIMSModule's render method which calls renderModuleContent
+            return super.render();
+        }
+
         // Use filtered tasks for display, default to all tasks if no filters
         const tasksToDisplay = this.hasActiveFilters 
             ? this.displayedTasks 
@@ -302,6 +309,17 @@ export class TaskManagementModuleWithSearch extends TaskManagementModuleEnhanced
                     title="List view (L)"
                 >
                     <span>List</span>
+                </button>
+                <button 
+                    class="view-button ${this.currentView === 'reporting' ? 'active' : ''}"
+                    @click=${() => {
+                        console.log('[TaskManagementWithSearch] Switching to reporting view');
+                        this.currentView = 'reporting';
+                        this.requestUpdate();
+                    }}
+                    title="Reports view"
+                >
+                    <span>Reports</span>
                 </button>
             </div>
             

@@ -108,6 +108,13 @@ export class TaskManagementModuleWithBulkOps extends TaskManagementModuleWithSea
 
     // Override render to include bulk operations
     render() {
+        // If in reporting view, delegate to parent's render method
+        if (this.currentView === 'reporting') {
+            console.log('[TaskManagementWithBulkOps] Delegating to parent for reporting view');
+            // Use the parent's render method which will call renderModuleContent
+            return super.render();
+        }
+
         // Get filtered tasks if available, otherwise use all tasks
         const displayTasks = this.hasActiveFilters ? this.displayedTasks : this.tasks;
         

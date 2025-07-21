@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
 import { taskEventBus, TASK_EVENTS } from '../utils/TaskEventBus.js';
+import './MentionSuggestionDropdown.js';
 
 /**
  * TaskCommentsModule - Comments and activity history for tasks
@@ -369,6 +370,24 @@ export class TaskCommentsModule extends LitElement {
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Mention styles */
+        .mention {
+            color: var(--accent-color, #007aff);
+            background: var(--accent-background, rgba(0, 122, 255, 0.1));
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .comment-input-container {
+            position: relative;
+        }
+
+        mention-suggestion-dropdown {
+            bottom: 100%;
+            margin-bottom: 8px;
+        }
     `;
 
     static properties = {
@@ -377,7 +396,12 @@ export class TaskCommentsModule extends LitElement {
         activities: { type: Array },
         filterType: { type: String },
         isLoading: { type: Boolean },
-        currentUser: { type: Object }
+        currentUser: { type: Object },
+        teamMembers: { type: Array },
+        showMentions: { type: Boolean },
+        mentionQuery: { type: String },
+        mentionSuggestions: { type: Array },
+        mentionStartIndex: { type: Number }
     };
 
     constructor() {
@@ -388,11 +412,17 @@ export class TaskCommentsModule extends LitElement {
         this.filterType = 'all'; // 'all', 'comments', 'activity'
         this.isLoading = false;
         this.currentUser = null;
+        this.teamMembers = [];
+        this.showMentions = false;
+        this.mentionQuery = '';
+        this.mentionSuggestions = [];
+        this.mentionStartIndex = -1;
     }
 
     connectedCallback() {
         super.connectedCallback();
         this.loadCurrentUser();
+        this.loadTeamMembers();
         this.setupEventListeners();
     }
 
@@ -433,6 +463,28 @@ export class TaskCommentsModule extends LitElement {
             this.currentUser = user;
         } catch (error) {
             console.error('[TaskCommentsModule] Error loading current user:', error);
+        }
+    }
+
+    async loadTeamMembers() {
+        try {
+            if (window.api?.lims?.getTeamMembers) {
+                const members = await window.api.lims.getTeamMembers();
+                this.teamMembers = members || [];
+                console.log('[TaskCommentsModule] Loaded', this.teamMembers.length, 'team members');
+            } else {
+                // Demo team members
+                this.teamMembers = [
+                    { id: '1', name: 'John Doe', email: 'john.doe@learn-x.com' },
+                    { id: '2', name: 'Jane Smith', email: 'jane.smith@learn-x.com' },
+                    { id: '3', name: 'Bob Johnson', email: 'bob.johnson@learn-x.com' },
+                    { id: '4', name: 'Alice Williams', email: 'alice.williams@learn-x.com' },
+                    { id: '5', name: 'Charlie Brown', email: 'charlie.brown@learn-x.com' }
+                ];
+            }
+        } catch (error) {
+            console.error('[TaskCommentsModule] Error loading team members:', error);
+            this.teamMembers = [];
         }
     }
 
@@ -499,10 +551,121 @@ export class TaskCommentsModule extends LitElement {
     }
 
     handleKeyDown(e) {
+        // Handle mention dropdown navigation
+        if (this.showMentions) {
+            const dropdown = this.shadowRoot.querySelector('mention-suggestion-dropdown');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                dropdown?.selectNext();
+                return;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                dropdown?.selectPrevious();
+                return;
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                dropdown?.selectCurrent();
+                return;
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.hideMentionDropdown();
+                return;
+            }
+        }
+
+        // Normal enter key handling
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             this.handleAddComment();
         }
+    }
+
+    handleCommentInput(e) {
+        const input = e.target;
+        const value = input.value;
+        const cursorPosition = input.selectionStart;
+
+        // Find the last @ before cursor
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+        
+        if (lastAtIndex !== -1) {
+            // Check if we're still in a mention (no space after @)
+            const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+            if (!textAfterAt.includes(' ')) {
+                // Show mention dropdown
+                this.mentionStartIndex = lastAtIndex;
+                this.mentionQuery = textAfterAt.toLowerCase();
+                this.updateMentionSuggestions();
+                this.showMentionDropdown(input);
+            } else {
+                this.hideMentionDropdown();
+            }
+        } else {
+            this.hideMentionDropdown();
+        }
+    }
+
+    updateMentionSuggestions() {
+        if (!this.mentionQuery) {
+            this.mentionSuggestions = this.teamMembers.slice(0, 5); // Show first 5 when no query
+        } else {
+            this.mentionSuggestions = this.teamMembers.filter(member => 
+                member.name.toLowerCase().includes(this.mentionQuery) ||
+                (member.email && member.email.toLowerCase().includes(this.mentionQuery))
+            ).slice(0, 5); // Limit to 5 suggestions
+        }
+    }
+
+    showMentionDropdown(input) {
+        this.showMentions = true;
+        
+        // Calculate position for dropdown
+        const inputRect = input.getBoundingClientRect();
+        const containerRect = this.shadowRoot.querySelector('.comment-input-container').getBoundingClientRect();
+        
+        // Position relative to the input container
+        const dropdown = this.shadowRoot.querySelector('mention-suggestion-dropdown');
+        if (dropdown) {
+            dropdown.position = {
+                top: inputRect.top - containerRect.top - 8, // 8px above input
+                left: 0
+            };
+        }
+    }
+
+    hideMentionDropdown() {
+        this.showMentions = false;
+        this.mentionQuery = '';
+        this.mentionSuggestions = [];
+        this.mentionStartIndex = -1;
+    }
+
+    handleMentionSelected(e) {
+        const member = e.detail;
+        const input = this.shadowRoot.querySelector('.comment-input');
+        
+        if (input && this.mentionStartIndex !== -1) {
+            const value = input.value;
+            const beforeMention = value.substring(0, this.mentionStartIndex);
+            const afterMention = value.substring(input.selectionStart);
+            
+            // Create mention text with the member's name
+            const mentionText = `@${member.name}`;
+            
+            // Update input value
+            input.value = beforeMention + mentionText + ' ' + afterMention;
+            
+            // Set cursor position after the mention
+            const newCursorPos = beforeMention.length + mentionText.length + 1;
+            input.setSelectionRange(newCursorPos, newCursorPos);
+            
+            // Focus back on input
+            input.focus();
+        }
+        
+        this.hideMentionDropdown();
     }
 
     setFilterType(type) {
@@ -583,6 +746,47 @@ export class TaskCommentsModule extends LitElement {
         return colors[index];
     }
 
+    parseMentions(text) {
+        if (!text) return '';
+        
+        // Regular expression to match @mentions
+        const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+        
+        // Split text by mentions and create HTML
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = mentionRegex.exec(text)) !== null) {
+            // Add text before mention
+            if (match.index > lastIndex) {
+                parts.push(text.substring(lastIndex, match.index));
+            }
+            
+            // Add mention as span
+            const mentionName = match[1];
+            // Check if this is a valid team member
+            const isValidMember = this.teamMembers.some(member => 
+                member.name.toLowerCase() === mentionName.toLowerCase()
+            );
+            
+            if (isValidMember) {
+                parts.push(html`<span class="mention">@${mentionName}</span>`);
+            } else {
+                parts.push(`@${mentionName}`);
+            }
+            
+            lastIndex = match.index + match[0].length;
+        }
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+            parts.push(text.substring(lastIndex));
+        }
+        
+        return parts;
+    }
+
     renderComment(comment) {
         return html`
             <div class="comment-item">
@@ -597,7 +801,7 @@ export class TaskCommentsModule extends LitElement {
                         <span class="comment-author">${comment.author_name}</span>
                         <span class="comment-time">${this.formatTime(comment.created_at)}</span>
                     </div>
-                    <div class="comment-body">${comment.content}</div>
+                    <div class="comment-body">${this.parseMentions(comment.content)}</div>
                     <div class="comment-actions">
                         <button class="comment-action">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -764,11 +968,17 @@ export class TaskCommentsModule extends LitElement {
 
                 ${this.taskId ? html`
                     <div class="comment-input-container">
+                        <mention-suggestion-dropdown
+                            .suggestions=${this.mentionSuggestions}
+                            .visible=${this.showMentions}
+                            @mention-selected=${this.handleMentionSelected}
+                        ></mention-suggestion-dropdown>
                         <div class="comment-input-wrapper">
                             <textarea 
                                 class="comment-input"
-                                placeholder="Add a comment..."
+                                placeholder="Add a comment... (use @ to mention team members)"
                                 @keydown=${this.handleKeyDown}
+                                @input=${this.handleCommentInput}
                             ></textarea>
                             <button 
                                 class="comment-submit"

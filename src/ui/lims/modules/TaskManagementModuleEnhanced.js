@@ -9,11 +9,13 @@ import { TaskTimeTrackingModule } from './taskManagement/timeTracking/TaskTimeTr
 import { TaskSprintModule } from './taskManagement/sprint/TaskSprintModule.js';
 import { TaskLabelModule } from './taskManagement/labels/TaskLabelModule.js';
 import { TaskTemplateModule } from './taskManagement/templates/TaskTemplateModule.js';
+import { TaskDependenciesModule } from './taskManagement/dependencies/TaskDependenciesModule.js';
 import './taskManagement/assignee/TaskAssigneeModule.js';
 import './taskManagement/comments/TaskCommentsModule.js';
 import './taskManagement/sprint/TaskSprintModule.js';
 import './taskManagement/labels/TaskLabelModule.js';
 import './taskManagement/templates/TaskTemplateModule.js';
+import './taskManagement/dependencies/TaskDependenciesModule.js';
 import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
@@ -210,6 +212,38 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 border-color: var(--accent-color, #007aff);
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+
+            .task-card.blocked {
+                background: rgba(239, 68, 68, 0.1);
+                border-color: rgba(239, 68, 68, 0.3);
+                opacity: 0.8;
+            }
+
+            .task-card.blocked:hover {
+                background: rgba(239, 68, 68, 0.15);
+                border-color: rgba(239, 68, 68, 0.5);
+            }
+
+            .blocked-indicator {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 20px;
+                height: 20px;
+                background: rgba(239, 68, 68, 0.2);
+                border: 1px solid rgba(239, 68, 68, 0.4);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: help;
+            }
+
+            .blocked-icon {
+                width: 12px;
+                height: 12px;
+                color: #ef4444;
             }
             
             .task-card:hover::after {
@@ -1923,6 +1957,22 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                     this.sprints = allSprints.flat();
                 } else {
                     this.sprints = [];
+                }
+                
+                // Load task dependencies to check blocked status
+                if (tasks && tasks.length > 0) {
+                    const blockedStatuses = await Promise.all(
+                        tasks.map(async (task) => {
+                            const result = await window.api.lims.canCompleteTask(task.id);
+                            return { taskId: task.id, blocked: !result.canComplete };
+                        })
+                    );
+                    
+                    // Add blocked status to tasks
+                    this.tasks = this.tasks.map(task => {
+                        const status = blockedStatuses.find(s => s.taskId === task.id);
+                        return { ...task, isBlocked: status?.blocked || false };
+                    });
                 }
                 
                 // Load labels (demo data for now)
@@ -3700,10 +3750,11 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     renderDraggableTaskCard(task) {
         const isSelected = this.selectedTasks.includes(task.id);
         const dueDateStatus = TaskDueDateModule.getDueDateStatus(task.due_date);
+        const isBlocked = task.isBlocked || false;
         
         return html`
             <div 
-                class="task-card ${isSelected ? 'selected' : ''} ${dueDateStatus}"
+                class="task-card ${isSelected ? 'selected' : ''} ${dueDateStatus} ${isBlocked ? 'blocked' : ''}"
                 draggable="true"
                 tabindex="0"
                 data-task-id="${task.id}"
@@ -3736,6 +3787,15 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </svg>
                     </button>
                 </div>
+                
+                ${isBlocked ? html`
+                    <div class="blocked-indicator" title="This task is blocked by dependencies">
+                        <svg class="blocked-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                    </div>
+                ` : ''}
                 
                 <div class="task-title">${task.title}</div>
                 ${task.description ? html`
@@ -3999,9 +4059,30 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         }
     }
 
-    handleEditTask(event, task) {
+    async handleEditTask(event, task) {
         event.stopPropagation(); // Prevent task selection
-        this.editingTask = { ...task };
+        
+        // Ensure we have a valid task with ID
+        if (!task || !task.id) {
+            console.error('[TaskManagement] Invalid task for editing:', task);
+            return;
+        }
+        
+        // Fetch the latest task data to ensure we have all fields
+        if (window.api?.lims?.getTask) {
+            try {
+                const latestTask = await window.api.lims.getTask(task.id);
+                this.editingTask = latestTask || { ...task };
+            } catch (error) {
+                console.error('[TaskManagement] Error fetching task:', error);
+                this.editingTask = { ...task };
+            }
+        } else {
+            this.editingTask = { ...task };
+        }
+        
+        console.log('[TaskManagement] Editing task:', this.editingTask.id, this.editingTask.title);
+        
         this.showEditModal = true;
         this.modalId = 'task-edit-modal';
         this.requestUpdate();
@@ -4010,7 +4091,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         setTimeout(() => {
             this.renderEditModalInPortal();
             // Emit task selected event for comments module
-            taskEventBus.emit(TASK_EVENTS.TASK_SELECTED, { taskId: task.id });
+            taskEventBus.emit(TASK_EVENTS.TASK_SELECTED, { taskId: this.editingTask.id });
         }, 0);
     }
 
@@ -4146,6 +4227,14 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 sprintContainer.innerHTML = '';
                 sprintContainer.appendChild(sprintModule);
             }
+            
+            // Set taskId on dependencies module
+            const dependenciesModule = document.querySelector('task-dependencies-module');
+            if (dependenciesModule && this.editingTask?.id) {
+                console.log('[TaskManagement] Setting taskId on dependencies module:', this.editingTask.id);
+                dependenciesModule.taskId = this.editingTask.id;
+                dependenciesModule.requestUpdate();
+            }
         }, 0);
     }
 
@@ -4263,7 +4352,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         </div>
                         
                         <div class="task-edit-sidebar">
-                            <task-comments-module></task-comments-module>
+                            <div style="min-height: 300px; overflow-y: auto; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                                <task-dependencies-module 
+                                    task-id="${this.editingTask?.id || ''}"
+                                    .taskId=${this.editingTask?.id}
+                                    @dependencies-updated=${this.handleDependenciesUpdated}
+                                ></task-dependencies-module>
+                            </div>
+                            <div style="flex: 1; overflow-y: auto;">
+                                <task-comments-module></task-comments-module>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4746,6 +4844,16 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             return false;
         }
         
+        // Check dependencies if moving to 'done'
+        if (newStatus === 'done' && window.api?.lims?.canCompleteTask) {
+            const result = await window.api.lims.canCompleteTask(task.id);
+            if (!result.canComplete) {
+                const blockingTitles = result.blockingTasks.map(t => t.task?.title || 'Unknown').join(', ');
+                this.validationErrors.dependencies = `Cannot complete task. Blocked by: ${blockingTitles}`;
+                return false;
+            }
+        }
+        
         // Run validation rules
         for (const rule of rules.validationRules) {
             const isValid = await rule.condition(task, newStatus);
@@ -4949,6 +5057,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
     handleTemplatesUpdated(event) {
         // Templates were updated in the module
         console.log('[TaskManagement] Templates updated:', event.detail.templates);
+    }
+
+    // Handle dependencies updated event
+    async handleDependenciesUpdated(event) {
+        console.log('[TaskManagement] Dependencies updated:', event.detail);
+        // Reload tasks to update blocked status
+        await this.loadModuleData();
     }
 
     async createFromTemplate(template) {

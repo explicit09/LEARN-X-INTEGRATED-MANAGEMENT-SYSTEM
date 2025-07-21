@@ -1,5 +1,5 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
-import { TaskEventBus } from '../events/TaskEventBus.js';
+import { TaskEventBus } from '../utils/TaskEventBus.js';
 
 // We'll use Chart.js from CDN for now - in production this should be bundled
 const chartScript = document.createElement('script');

@@ -18,6 +18,7 @@ import './taskManagement/templates/TaskTemplateModule.js';
 import './taskManagement/dependencies/TaskDependenciesModule.js';
 import { taskEventBus, TASK_EVENTS } from './taskManagement/utils/TaskEventBus.js';
 import { optimisticUpdateManager } from './taskManagement/utils/OptimisticUpdateManager.js';
+import { undoRedoManager } from './taskManagement/utils/UndoRedoManager.js';
 
 // Note: Since @dnd-kit is React-specific and we're using LitElement,
 // we'll implement professional drag-and-drop using enhanced HTML5 drag-and-drop API
@@ -1854,6 +1855,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         // Initialize search and filter integration
         TaskSearchAndFilterIntegration.initialize(this);
         
+        // Setup undo/redo handlers
+        this.setupUndoRedoHandlers();
+        
         // Initialize module data
         this.loadModuleData().catch(error => {
             console.error('[TaskManagementModuleEnhanced] Error loading module data:', error);
@@ -2037,6 +2041,19 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
         if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
             event.preventDefault();
             this.toggleCommandPalette();
+            return;
+        }
+
+        // Undo/Redo shortcuts
+        if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
+            event.preventDefault();
+            this.performUndo();
+            return;
+        }
+        
+        if ((event.metaKey || event.ctrlKey) && (event.key === 'z' && event.shiftKey || event.key === 'y')) {
+            event.preventDefault();
+            this.performRedo();
             return;
         }
 
@@ -2283,9 +2300,13 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             const originalTask = { ...task };
             
             // Optimistic update - immediately update UI
+            const updatedTask = { ...task, status: newStatus };
             this.tasks = this.tasks.map(t => 
-                t.id === taskId ? { ...t, status: newStatus } : t
+                t.id === taskId ? updatedTask : t
             );
+            
+            // Track for undo
+            undoRedoManager.recordTaskUpdate(originalTask, updatedTask);
             this.requestUpdate();
             
             // Track the update for potential rollback
@@ -2338,6 +2359,136 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             this.handleError(error, 'Updating task status');
             // Revert optimistic update
             await this.loadModuleData();
+        }
+    }
+
+    async markTasksAsDone(taskIds) {
+        if (!taskIds || taskIds.length === 0) return;
+        
+        const tasksToUpdate = this.tasks.filter(t => taskIds.includes(t.id) && t.status !== 'done');
+        if (tasksToUpdate.length === 0) {
+            this.showNotification('Selected tasks are already done', 'info');
+            return;
+        }
+        
+        this.showNotification(`Marking ${tasksToUpdate.length} task(s) as done...`, 'info');
+        
+        try {
+            // Update each task to done status
+            const updatePromises = tasksToUpdate.map(task => 
+                this.updateTaskStatus(task.id, 'done')
+            );
+            
+            await Promise.all(updatePromises);
+            
+            // Clear selection after successful update
+            this.exitSelectionMode();
+            this.showNotification(`${tasksToUpdate.length} task(s) marked as done`, 'success');
+        } catch (error) {
+            console.error('[TaskMgmt] Error marking tasks as done:', error);
+            this.showNotification('Failed to mark some tasks as done', 'error');
+        }
+    }
+
+    // Undo/Redo system setup
+    setupUndoRedoHandlers() {
+        // Register handlers for different action types
+        undoRedoManager.registerChangeHandler('create_task', async (targetState, sourceState, metadata, isUndo) => {
+            if (isUndo) {
+                // Undo create = delete
+                await this.deleteTaskWithoutUndo(targetState.id);
+            } else {
+                // Redo create = recreate
+                await this.createTaskWithoutUndo(targetState);
+            }
+        });
+
+        undoRedoManager.registerChangeHandler('update_task', async (targetState, sourceState, metadata, isUndo) => {
+            // Apply the target state
+            await this.updateTaskWithoutUndo(targetState.id, targetState);
+        });
+
+        undoRedoManager.registerChangeHandler('delete_task', async (targetState, sourceState, metadata, isUndo) => {
+            if (isUndo) {
+                // Undo delete = recreate
+                await this.createTaskWithoutUndo(targetState);
+            } else {
+                // Redo delete = delete again
+                await this.deleteTaskWithoutUndo(sourceState.id);
+            }
+        });
+
+        undoRedoManager.registerChangeHandler('bulk_update', async (targetState, sourceState, metadata, isUndo) => {
+            // Apply target state to all tasks
+            const updatePromises = targetState.map(task => 
+                this.updateTaskWithoutUndo(task.id, task)
+            );
+            await Promise.all(updatePromises);
+        });
+
+        undoRedoManager.registerChangeHandler('move_task', async (targetState, sourceState, metadata, isUndo) => {
+            await this.updateTaskWithoutUndo(targetState.id, { status: targetState.status });
+        });
+    }
+
+    // Perform undo operation
+    async performUndo() {
+        if (!undoRedoManager.canUndo()) {
+            this.showNotification('Nothing to undo', 'info');
+            return;
+        }
+
+        const description = undoRedoManager.getUndoDescription();
+        this.showNotification(`Undoing: ${description}`, 'info');
+
+        try {
+            await undoRedoManager.undo();
+            await this.loadModuleData(); // Refresh the UI
+            this.showNotification(`Undone: ${description}`, 'success');
+        } catch (error) {
+            console.error('[TaskMgmt] Error performing undo:', error);
+            this.showNotification('Failed to undo operation', 'error');
+        }
+    }
+
+    // Perform redo operation
+    async performRedo() {
+        if (!undoRedoManager.canRedo()) {
+            this.showNotification('Nothing to redo', 'info');
+            return;
+        }
+
+        const description = undoRedoManager.getRedoDescription();
+        this.showNotification(`Redoing: ${description}`, 'info');
+
+        try {
+            await undoRedoManager.redo();
+            await this.loadModuleData(); // Refresh the UI
+            this.showNotification(`Redone: ${description}`, 'success');
+        } catch (error) {
+            console.error('[TaskMgmt] Error performing redo:', error);
+            this.showNotification('Failed to redo operation', 'error');
+        }
+    }
+
+    // Task operations without undo tracking (used by undo/redo system)
+    async createTaskWithoutUndo(taskData) {
+        if (window.api?.lims?.createTask) {
+            const created = await window.api.lims.createTask(taskData);
+            return created;
+        }
+    }
+
+    async updateTaskWithoutUndo(taskId, updates) {
+        if (window.api?.lims?.updateTask) {
+            const updated = await window.api.lims.updateTask(taskId, updates);
+            return updated;
+        }
+    }
+
+    async deleteTaskWithoutUndo(taskId) {
+        if (window.api?.lims?.deleteTask) {
+            await window.api.lims.deleteTask(taskId);
         }
     }
 
@@ -3472,6 +3623,10 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 
                 if (createdTask) {
                     this.tasks = [...this.tasks, createdTask];
+                    
+                    // Track for undo
+                    undoRedoManager.recordTaskCreation(createdTask);
+                    
                     await this.loadModuleData(); // Reload to ensure sync
                     this.showKeyboardHint('Task created successfully!');
                     setTimeout(() => this.hideKeyboardHint(), 2000);
@@ -3524,6 +3679,8 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             { key: 'D', action: 'Mark task as done' },
             { key: 'X', action: 'Toggle selection mode' },
             { key: 'Shift + X', action: 'Select all tasks' },
+            { key: 'Cmd/Ctrl + Z', action: 'Undo last action' },
+            { key: 'Cmd/Ctrl + Shift + Z', action: 'Redo last action' },
             { key: 'Arrow Keys', action: 'Navigate between tasks' },
             { key: 'Space', action: 'Start drag (when task focused)' },
             { key: 'Cmd/Ctrl + Shift + F', action: 'Toggle fullscreen' },
@@ -3739,6 +3896,26 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"/>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                    <button 
+                        class="action-button" 
+                        @click=${this.performUndo} 
+                        ?disabled=${!undoRedoManager.canUndo()}
+                        title="${undoRedoManager.getUndoDescription() || 'Undo'} (Cmd/Ctrl+Z)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v6h6"/>
+                            <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
+                        </svg>
+                    </button>
+                    <button 
+                        class="action-button" 
+                        @click=${this.performRedo} 
+                        ?disabled=${!undoRedoManager.canRedo()}
+                        title="${undoRedoManager.getRedoDescription() || 'Redo'} (Cmd/Ctrl+Shift+Z)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 7v6h-6"/>
+                            <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"/>
                         </svg>
                     </button>
                     <button class="action-button" @click=${this.showKeyboardShortcuts} title="Keyboard shortcuts (?)">
@@ -4120,6 +4297,9 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             this.tasks = this.tasks.filter(t => t.id !== task.id);
             this.requestUpdate();
             this.showNotification('Deleting task...', 'info');
+            
+            // Track for undo
+            undoRedoManager.recordTaskDeletion(task);
             
             // Track the update for potential rollback
             optimisticUpdateManager.trackUpdate(

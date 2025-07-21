@@ -1,10 +1,6 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
 import { TaskEventBus } from '../utils/TaskEventBus.js';
-
-// We'll use Chart.js from CDN for now - in production this should be bundled
-const chartScript = document.createElement('script');
-chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
-document.head.appendChild(chartScript);
+import Chart from 'chart.js/auto';
 
 /**
  * TaskReportingModule - Advanced reporting and analytics for task management
@@ -360,6 +356,7 @@ export class TaskReportingModule extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
+        console.log('[TaskReporting] Component connected');
         this.loadReportData();
         
         // Listen for task updates
@@ -385,6 +382,7 @@ export class TaskReportingModule extends LitElement {
     }
 
     async loadReportData() {
+        console.log('[TaskReporting] Loading report data...');
         this.loading = true;
         
         try {
@@ -395,6 +393,13 @@ export class TaskReportingModule extends LitElement {
                 this.fetchSprints(),
                 this.fetchUsers()
             ]);
+            
+            console.log('[TaskReporting] Data fetched:', { 
+                tasks: tasks.length, 
+                timeEntries: timeEntries.length, 
+                sprints: sprints.length, 
+                users: users.length 
+            });
 
             // Process and calculate metrics
             this.reportData = {
@@ -605,13 +610,6 @@ export class TaskReportingModule extends LitElement {
     }
 
     updateCharts() {
-        // Check if Chart.js is loaded
-        if (!window.Chart) {
-            // Retry after a short delay
-            setTimeout(() => this.updateCharts(), 100);
-            return;
-        }
-        
         // Update completion rate chart
         this.updateCompletionChart();
         
@@ -627,7 +625,7 @@ export class TaskReportingModule extends LitElement {
 
     updateCompletionChart() {
         const canvas = this.shadowRoot.querySelector('#completionChart');
-        if (!canvas || !window.Chart) return;
+        if (!canvas || !Chart) return;
         
         const ctx = canvas.getContext('2d');
         
@@ -637,7 +635,7 @@ export class TaskReportingModule extends LitElement {
         
         const data = this.reportData.overview;
         
-        this.charts.completion = new window.Chart(ctx, {
+        this.charts.completion = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['Completed', 'In Progress', 'To Do', 'Blocked'],
@@ -675,7 +673,7 @@ export class TaskReportingModule extends LitElement {
 
     updateTimeChart() {
         const canvas = this.shadowRoot.querySelector('#timeChart');
-        if (!canvas || !window.Chart) return;
+        if (!canvas || !Chart) return;
         
         const ctx = canvas.getContext('2d');
         
@@ -687,7 +685,7 @@ export class TaskReportingModule extends LitElement {
         const dates = Object.keys(timeData.dailyTime).sort();
         const hours = dates.map(date => timeData.dailyTime[date]);
         
-        this.charts.time = new window.Chart(ctx, {
+        this.charts.time = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
@@ -732,7 +730,7 @@ export class TaskReportingModule extends LitElement {
 
     updateProductivityChart() {
         const canvas = this.shadowRoot.querySelector('#productivityChart');
-        if (!canvas || !window.Chart) return;
+        if (!canvas || !Chart) return;
         
         const ctx = canvas.getContext('2d');
         
@@ -743,7 +741,7 @@ export class TaskReportingModule extends LitElement {
         const productivityData = this.reportData.productivity;
         const users = Object.values(productivityData).slice(0, 10);
         
-        this.charts.productivity = new window.Chart(ctx, {
+        this.charts.productivity = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: users.map(u => u.name),
@@ -814,7 +812,7 @@ export class TaskReportingModule extends LitElement {
 
     updateTrendsChart() {
         const canvas = this.shadowRoot.querySelector('#trendsChart');
-        if (!canvas || !window.Chart) return;
+        if (!canvas || !Chart) return;
         
         const ctx = canvas.getContext('2d');
         
@@ -825,7 +823,7 @@ export class TaskReportingModule extends LitElement {
         const trendsData = this.reportData.trends;
         const dates = Object.keys(trendsData).sort();
         
-        this.charts.trends = new window.Chart(ctx, {
+        this.charts.trends = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
@@ -1252,6 +1250,8 @@ export class TaskReportingModule extends LitElement {
     }
 
     render() {
+        console.log('[TaskReporting] Rendering, loading:', this.loading, 'selectedTab:', this.selectedTab);
+        
         return html`
             <div class="reporting-container">
                 <div class="report-header">

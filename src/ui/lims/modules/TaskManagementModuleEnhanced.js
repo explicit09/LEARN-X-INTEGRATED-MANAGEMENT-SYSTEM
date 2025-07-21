@@ -55,6 +55,14 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                 min-height: 0;
             }
 
+            /* Reporting view specific styles */
+            task-reporting-module {
+                display: block;
+                width: 100%;
+                height: 100%;
+                overflow-y: auto;
+            }
+
             .task-toolbar {
                 display: flex;
                 align-items: center;
@@ -3920,7 +3928,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
             <div class="task-management-container">
                 ${this.renderCommandPalette()}
                 ${this.renderTemplatePanel()}
-                ${TaskSearchAndFilterIntegration.renderSearchAndFilters()}
+                ${this.currentView !== 'reporting' ? TaskSearchAndFilterIntegration.renderSearchAndFilters() : ''}
                 ${this.renderToolbar()}
                 <div class="task-content">
                     ${this.currentView === 'reporting' ? 
@@ -3930,7 +3938,7 @@ export class TaskManagementModuleEnhanced extends LIMSModule {
                             this.renderListView(displayTasks)
                     }
                 </div>
-                ${this.renderKeyboardHint()}
+                ${this.currentView !== 'reporting' ? this.renderKeyboardHint() : ''}
                 ${this.renderSelectionCount()}
                 ${this.renderValidationErrors()}
             </div>

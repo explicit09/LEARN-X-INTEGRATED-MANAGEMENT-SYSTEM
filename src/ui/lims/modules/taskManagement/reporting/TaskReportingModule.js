@@ -1,5 +1,5 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
-import { TaskEventBus } from '../utils/TaskEventBus.js';
+import { taskEventBus, TASK_EVENTS } from '../utils/TaskEventBus.js';
 
 // Chart.js will be loaded dynamically to avoid import issues
 let Chart = null;
@@ -18,19 +18,15 @@ export class TaskReportingModule extends LitElement {
         }
 
         .reporting-container {
-            padding: 20px;
+            padding: 16px;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
+            background: var(--background-primary, transparent);
         }
 
         .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 16px;
+            display: none; /* Hide the redundant header since we have toolbar */
         }
 
         .report-title {
@@ -41,9 +37,15 @@ export class TaskReportingModule extends LitElement {
 
         .report-controls {
             display: flex;
-            gap: 12px;
+            gap: 16px;
             align-items: center;
             flex-wrap: wrap;
+            padding: 16px;
+            background: var(--background-secondary, rgba(0, 0, 0, 0.4));
+            border-radius: var(--border-radius, 7px);
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            margin-bottom: 16px;
+            justify-content: space-between;
         }
 
         .date-range-selector {
@@ -105,15 +107,16 @@ export class TaskReportingModule extends LitElement {
         .report-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            gap: 16px;
             margin-bottom: 24px;
         }
 
         .report-card {
-            background: var(--background-secondary, rgba(0, 0, 0, 0.3));
+            background: var(--background-secondary, rgba(0, 0, 0, 0.4));
             border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-            border-radius: 12px;
+            border-radius: var(--border-radius, 7px);
             padding: 20px;
+            backdrop-filter: blur(10px);
         }
 
         .report-card.full-width {
@@ -253,42 +256,39 @@ export class TaskReportingModule extends LitElement {
             opacity: 0.5;
         }
 
-        /* Tabs */
+        /* Tabs - matching task management style */
         .report-tabs {
             display: flex;
-            gap: 8px;
-            margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            gap: 2px;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--background-secondary, rgba(0, 0, 0, 0.4));
+            border-radius: var(--border-radius, 7px);
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
         }
 
         .tab-button {
             background: transparent;
             border: none;
-            color: var(--text-muted, rgba(255, 255, 255, 0.6));
-            padding: 12px 20px;
+            color: var(--text-color, #e5e5e7);
+            padding: 8px 16px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
-            position: relative;
+            border-radius: 4px;
+            opacity: 0.7;
         }
 
         .tab-button:hover {
-            color: var(--text-primary, #e5e5e7);
+            opacity: 1;
+            background: var(--hover-background, rgba(255, 255, 255, 0.1));
         }
 
         .tab-button.active {
+            opacity: 1;
+            background: var(--accent-background, rgba(0, 122, 255, 0.2));
             color: var(--accent-color, #007aff);
-        }
-
-        .tab-button.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--accent-color, #007aff);
         }
 
         /* Filters panel */
@@ -331,6 +331,59 @@ export class TaskReportingModule extends LitElement {
             padding: 8px;
             border-radius: 6px;
             font-size: 14px;
+        }
+
+        /* Label and status badges */
+        .label-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--accent-background, rgba(0, 122, 255, 0.2));
+            color: var(--accent-color, #007aff);
+            border: 1px solid var(--accent-color, #007aff);
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-badge.active {
+            background: var(--success-background, rgba(52, 199, 89, 0.2));
+            color: var(--success-color, #34c759);
+            border: 1px solid var(--success-color, #34c759);
+        }
+        
+        .status-badge.planned {
+            background: var(--warning-background, rgba(255, 159, 10, 0.2));
+            color: var(--warning-color, #ff9f0a);
+            border: 1px solid var(--warning-color, #ff9f0a);
+        }
+        
+        .status-badge.completed {
+            background: var(--muted-background, rgba(255, 255, 255, 0.1));
+            color: var(--text-muted, rgba(255, 255, 255, 0.6));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+        }
+        
+        .insights {
+            color: var(--text-primary, #e5e5e7);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        
+        .insights p {
+            margin: 8px 0;
+        }
+        
+        .insights strong {
+            color: var(--accent-color, #007aff);
+            font-weight: 600;
         }
     `;
 
@@ -378,9 +431,9 @@ export class TaskReportingModule extends LitElement {
         this.loadReportData();
         
         // Listen for task updates
-        TaskEventBus.on('task-created', () => this.loadReportData());
-        TaskEventBus.on('task-updated', () => this.loadReportData());
-        TaskEventBus.on('task-deleted', () => this.loadReportData());
+        taskEventBus.on(TASK_EVENTS.TASK_CREATED, () => this.loadReportData());
+        taskEventBus.on(TASK_EVENTS.TASK_UPDATED, () => this.loadReportData());
+        taskEventBus.on(TASK_EVENTS.TASK_DELETED, () => this.loadReportData());
     }
 
     disconnectedCallback() {
@@ -442,39 +495,63 @@ export class TaskReportingModule extends LitElement {
     }
 
     async fetchTasks() {
-        const { data, error } = await window.supabaseClient
-            .from('lims_tasks')
-            .select('*')
-            .gte('created_at', this.dateRange.start)
-            .lte('created_at', this.dateRange.end);
-        
-        return data || [];
+        try {
+            if (window.api?.lims?.getTasks) {
+                const tasks = await window.api.lims.getTasks();
+                // Filter by date range
+                return tasks.filter(task => {
+                    const createdAt = new Date(task.created_at);
+                    return createdAt >= new Date(this.dateRange.start) && 
+                           createdAt <= new Date(this.dateRange.end + 'T23:59:59');
+                });
+            }
+            return [];
+        } catch (error) {
+            console.error('[TaskReporting] Error fetching tasks:', error);
+            return [];
+        }
     }
 
     async fetchTimeEntries() {
-        const { data, error } = await window.supabaseClient
-            .from('lims_time_entries')
-            .select('*')
-            .gte('start_time', this.dateRange.start)
-            .lte('start_time', this.dateRange.end);
-        
-        return data || [];
+        // Time tracking might not be implemented yet
+        // Return empty array for now
+        return [];
     }
 
     async fetchSprints() {
-        const { data, error } = await window.supabaseClient
-            .from('lims_sprints')
-            .select('*');
-        
-        return data || [];
+        try {
+            if (window.api?.lims?.getSprints) {
+                // Get sprints for all projects
+                const projects = await window.api.lims.getProjects();
+                const allSprints = [];
+                for (const project of projects) {
+                    const sprints = await window.api.lims.getSprints(project.id);
+                    allSprints.push(...sprints);
+                }
+                return allSprints;
+            }
+            return [];
+        } catch (error) {
+            console.error('[TaskReporting] Error fetching sprints:', error);
+            return [];
+        }
     }
 
     async fetchUsers() {
-        const { data, error } = await window.supabaseClient
-            .from('users')
-            .select('id, email, display_name');
-        
-        return data || [];
+        try {
+            if (window.api?.lims?.getTeamMembers) {
+                const members = await window.api.lims.getTeamMembers();
+                return members.map(member => ({
+                    id: member.id,
+                    email: member.email,
+                    display_name: member.name || member.email
+                }));
+            }
+            return [];
+        } catch (error) {
+            console.error('[TaskReporting] Error fetching users:', error);
+            return [];
+        }
     }
 
     calculateOverviewMetrics(tasks, timeEntries) {
@@ -1260,7 +1337,7 @@ export class TaskReportingModule extends LitElement {
                     <div class="insights">
                         <p>• Most used label: <strong>${labels[0]?.label || 'N/A'}</strong> (${labels[0]?.count || 0} tasks)</p>
                         <p>• Total unique labels: <strong>${labels.length}</strong></p>
-                        <p>• Average tasks per label: <strong>${(totalTasks / labels.length).toFixed(1)}</strong></p>
+                        <p>• Average tasks per label: <strong>${labels.length > 0 ? (totalTasks / labels.length).toFixed(1) : '0'}</strong></p>
                     </div>
                 </div>
             </div>
@@ -1272,39 +1349,28 @@ export class TaskReportingModule extends LitElement {
         
         return html`
             <div class="reporting-container">
-                <div class="report-header">
-                    <h2 class="report-title">Task Reports & Analytics</h2>
-                    <div class="report-controls">
-                        <div class="date-range-selector">
-                            <input 
-                                type="date" 
-                                class="date-input"
-                                .value=${this.dateRange.start}
-                                @change=${(e) => this.handleDateChange('start', e)}
-                            />
-                            <span style="color: var(--text-muted)">to</span>
-                            <input 
-                                type="date" 
-                                class="date-input"
-                                .value=${this.dateRange.end}
-                                @change=${(e) => this.handleDateChange('end', e)}
-                            />
-                        </div>
-                        <button 
-                            class="filter-button ${this.showFilters ? 'active' : ''}"
-                            @click=${this.toggleFilters}
-                        >
-                            <span>Filters</span>
-                        </button>
-                        <button class="export-button" @click=${this.exportReport}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Export
-                        </button>
+                <!-- Date range selector in header -->
+                <div class="report-controls">
+                    <div class="date-range-selector">
+                        <label>From:</label>
+                        <input 
+                            type="date" 
+                            class="date-input"
+                            .value=${this.dateRange.start}
+                            @change=${(e) => this.handleDateChange('start', e)}
+                        />
+                        <label>To:</label>
+                        <input 
+                            type="date" 
+                            class="date-input"
+                            .value=${this.dateRange.end}
+                            @change=${(e) => this.handleDateChange('end', e)}
+                        />
                     </div>
+                    <button class="export-button" @click=${() => this.exportReport()}>
+                        <span>📊</span>
+                        Export
+                    </button>
                 </div>
 
                 ${this.showFilters ? html`

@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../../../assets/lit-core-2.7.4.min.js';
 import { taskEventBus, TASK_EVENTS } from '../utils/TaskEventBus.js';
+import '../projectMove/TaskProjectMoveModule.js';
 
 /**
  * TaskBulkOperationsModule - Bulk operations for multiple selected tasks
@@ -415,8 +416,17 @@ export class TaskBulkOperationsModule extends LitElement {
     }
 
     async moveToProject() {
-        // TODO: Implement project selection UI
-        console.log('[TaskBulkOperationsModule] Project move not yet implemented');
+        this.activeDropdown = null;
+        
+        // Get or create the project move module
+        let projectMoveModule = this.shadowRoot.querySelector('task-project-move-module');
+        if (!projectMoveModule) {
+            projectMoveModule = document.createElement('task-project-move-module');
+            this.shadowRoot.appendChild(projectMoveModule);
+        }
+        
+        // Open the dialog with selected tasks
+        projectMoveModule.open(this.selectedTasks);
     }
 
     async archiveTasks() {
@@ -727,6 +737,9 @@ export class TaskBulkOperationsModule extends LitElement {
                     </div>
                 </div>
             ` : ''}
+            
+            <!-- Project Move Module (hidden by default) -->
+            <task-project-move-module></task-project-move-module>
         `;
     }
 }

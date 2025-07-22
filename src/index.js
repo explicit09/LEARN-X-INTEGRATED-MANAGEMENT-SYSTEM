@@ -29,6 +29,7 @@ const sessionRepository = require('./features/common/repositories/session');
 const modelStateService = require('./features/common/services/modelStateService');
 const featureBridge = require('./bridge/featureBridge');
 const windowBridge = require('./bridge/windowBridge');
+const analyticsService = require('./features/analytics/analyticsService');
 
 // Global variables
 const eventBridge = new EventEmitter();
@@ -201,6 +202,15 @@ app.whenReady().then(async () => {
         await modelStateService.initialize();
         //////// after_modelStateService ////////
 
+        // Initialize analytics service (which starts PGMQ consumer)
+        try {
+            await analyticsService.initialize();
+            console.log('>>> [index.js] Analytics service initialized with PGMQ consumer');
+        } catch (error) {
+            console.error('>>> [index.js] Analytics service initialization failed:', error);
+            // Continue with app startup even if analytics fails
+        }
+
         featureBridge.initialize();  // 추가: featureBridge 초기화
         windowBridge.initialize();
         setupWebDataHandlers();
@@ -264,7 +274,15 @@ app.on('before-quit', async (event) => {
         await listenService.closeSession();
         console.log('[Shutdown] Audio capture stopped');
         
-        // 2. End all active sessions (database operations) - with error handling
+        // 2. Stop analytics service and PGMQ consumer
+        try {
+            await analyticsService.cleanup();
+            console.log('[Shutdown] Analytics service and PGMQ consumer stopped');
+        } catch (analyticsError) {
+            console.warn('[Shutdown] Could not stop analytics service:', analyticsError.message);
+        }
+        
+        // 3. End all active sessions (database operations) - with error handling
         try {
             await sessionRepository.endAllActiveSessions();
             console.log('[Shutdown] Active sessions ended');
@@ -272,7 +290,7 @@ app.on('before-quit', async (event) => {
             console.warn('[Shutdown] Could not end active sessions (database may be closed):', dbError.message);
         }
         
-        // 3. Shutdown Ollama service (potentially time-consuming)
+        // 4. Shutdown Ollama service (potentially time-consuming)
         console.log('[Shutdown] shutting down Ollama service...');
         const ollamaShutdownSuccess = await Promise.race([
             ollamaService.shutdown(false), // Graceful shutdown
@@ -291,7 +309,7 @@ app.on('before-quit', async (event) => {
             }
         }
         
-        // 4. Close database connections (final cleanup)
+        // 5. Close database connections (final cleanup)
         try {
             databaseInitializer.close();
             console.log('[Shutdown] Database connections closed');

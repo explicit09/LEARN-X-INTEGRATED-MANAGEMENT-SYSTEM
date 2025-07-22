@@ -3,6 +3,8 @@ import './core/LIMSModuleLoader.js';
 import './modules/TaskManagementModuleEnhanced.js';
 import './modules/TaskManagementModuleWithBulkOps.js';
 import './modules/CoreDashboardModule.js';
+import './modules/AnalyticsDashboardModuleEnhanced.js';
+import './modules/BusinessIntelligenceDashboard.js';
 
 /**
  * LIMS Dashboard View - New Modular Architecture
@@ -182,8 +184,10 @@ export class LimsDashboardView extends LitElement {
                 return html`<task-management-module-with-bulk-ops slot="module-content"></task-management-module-with-bulk-ops>`;
             case 'overview':
                 return html`<core-dashboard-module slot="module-content"></core-dashboard-module>`;
-            case 'analytics':
-                return html`<core-dashboard-module slot="module-content" .viewMode=${'analytics'}></core-dashboard-module>`;
+            case 'analytics-dashboard':
+                return html`<analytics-dashboard-module-enhanced slot="module-content"></analytics-dashboard-module-enhanced>`;
+            case 'business-intelligence':
+                return html`<business-intelligence-dashboard slot="module-content"></business-intelligence-dashboard>`;
             default:
                 return html`
                     <div slot="module-content" style="padding: 40px; text-align: center; opacity: 0.6;">

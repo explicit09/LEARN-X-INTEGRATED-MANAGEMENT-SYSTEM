@@ -233,7 +233,8 @@ export class LIMSModuleLoader extends LitElement {
                 icon: '📊',
                 modules: [
                     { id: 'overview', name: 'Overview', status: 'ready' },
-                    { id: 'analytics', name: 'Analytics', status: 'ready' },
+                    { id: 'analytics-dashboard', name: 'Analytics Dashboard', status: 'ready' },
+                    { id: 'business-intelligence', name: 'Business Intelligence', status: 'ready' },
                     { id: 'insights', name: 'AI Insights', status: 'beta' }
                 ]
             },

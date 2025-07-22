@@ -28,6 +28,13 @@ class SupabaseDatabase {
         }
     }
 
+    getClient() {
+        if (!this.client) {
+            this.initialize();
+        }
+        return this.client;
+    }
+
     // Generic CRUD operations
     async create(table, data) {
         const { data: result, error } = await this.client

@@ -13,6 +13,7 @@ const listenService = require('../features/listen/listenService');
 const permissionService = require('../features/common/services/permissionService');
 const encryptionService = require('../features/common/services/encryptionService');
 const limsService = require('../features/lims/limsService');
+const analyticsService = require('../features/analytics/analyticsService');
 
 module.exports = {
   // Renderer로부터의 요청을 수신하고 서비스로 전달
@@ -142,6 +143,59 @@ module.exports = {
     ipcMain.handle('lims:addTaskDependency', async (event, taskId, dependsOnTaskId) => await limsService.addTaskDependency(taskId, dependsOnTaskId));
     ipcMain.handle('lims:removeTaskDependency', async (event, dependencyId) => await limsService.removeTaskDependency(dependencyId));
     ipcMain.handle('lims:canCompleteTask', async (event, taskId) => await limsService.canCompleteTask(taskId));
+
+    // Analytics Service
+    ipcMain.handle('analytics:initialize', async () => {
+      await analyticsService.initialize();
+      
+      // Set up event broadcasting
+      analyticsService.subscribeToEvents((event) => {
+        BrowserWindow.getAllWindows().forEach(win => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('analytics:event-processed', event);
+          }
+        });
+      });
+      
+      analyticsService.subscribeToMetrics((metrics) => {
+        BrowserWindow.getAllWindows().forEach(win => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('analytics:metrics-updated', metrics);
+          }
+        });
+      });
+      
+      analyticsService.subscribeToAlerts((alert) => {
+        BrowserWindow.getAllWindows().forEach(win => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('analytics:alert-triggered', alert);
+          }
+        });
+      });
+    });
+    ipcMain.handle('analytics:getSummaryMetrics', async (event, timeRange) => await analyticsService.getSummaryMetrics(timeRange));
+    ipcMain.handle('analytics:getTimeSeriesData', async (event, metric, startDate, endDate, interval) => 
+        await analyticsService.getTimeSeriesData(metric, startDate, endDate, interval));
+    ipcMain.handle('analytics:getUserCohorts', async () => await analyticsService.getUserCohorts());
+    ipcMain.handle('analytics:getFeatureAdoption', async () => await analyticsService.getFeatureAdoption());
+    ipcMain.handle('analytics:getRecentEvents', async (event, limit) => await analyticsService.getRecentEvents(limit));
+    ipcMain.handle('analytics:getVoiceMetrics', async (event, timeRange) => await analyticsService.getVoiceMetrics(timeRange));
+    ipcMain.handle('analytics:getSystemHealth', async () => await analyticsService.getSystemHealth());
+    ipcMain.handle('analytics:getActiveAlerts', async () => await analyticsService.getActiveAlerts());
+    ipcMain.handle('analytics:getLearnXMetrics', async (event, timeRange) => await analyticsService.getLearnXMetrics(timeRange));
+    ipcMain.handle('analytics:refreshCache', async () => await analyticsService.refreshCache());
+    ipcMain.handle('analytics:getConsumerStatus', async () => await analyticsService.getConsumerStatus());
+    
+    // Business Intelligence
+    ipcMain.handle('analytics:getBusinessKPIs', async (event, timeRange) => await analyticsService.getBusinessKPIs(timeRange));
+    ipcMain.handle('analytics:getConversionFunnel', async (event, timeRange) => await analyticsService.getConversionFunnel(timeRange));
+    ipcMain.handle('analytics:getLearningAnalytics', async (event, timeRange) => await analyticsService.getLearningAnalytics(timeRange));
+    ipcMain.handle('analytics:getActionableInsights', async (event, timeRange) => await analyticsService.getActionableInsights(timeRange));
+    
+    // Aggregation & Reporting
+    ipcMain.handle('analytics:getDAUWAUMAU', async (event, startDate, endDate) => await analyticsService.getDAUWAUMAU(startDate, endDate));
+    ipcMain.handle('analytics:getRetentionCohorts', async (event, timeRange) => await analyticsService.getRetentionCohorts(timeRange));
+    ipcMain.handle('analytics:generateReport', async (event, options) => await analyticsService.generateReport(options));
 
     // ModelStateService
     ipcMain.handle('model:validate-key', async (e, { provider, key }) => await modelStateService.handleValidateKey(provider, key));

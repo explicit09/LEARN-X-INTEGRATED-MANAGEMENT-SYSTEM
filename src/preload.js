@@ -355,5 +355,60 @@ contextBridge.exposeInMainWorld('api', {
     removeOnTasksUpdated: (callback) => ipcRenderer.removeListener('lims:tasks-updated', callback),
     onProjectsUpdated: (callback) => ipcRenderer.on('lims:projects-updated', callback),
     removeOnProjectsUpdated: (callback) => ipcRenderer.removeListener('lims:projects-updated', callback)
+  },
+
+  // Analytics namespace
+  analytics: {
+    // Service management
+    initialize: () => ipcRenderer.invoke('analytics:initialize'),
+    
+    // Data fetching
+    getSummaryMetrics: (timeRange) => ipcRenderer.invoke('analytics:getSummaryMetrics', timeRange),
+    getTimeSeriesData: (metric, startDate, endDate, interval) => 
+      ipcRenderer.invoke('analytics:getTimeSeriesData', metric, startDate, endDate, interval),
+    getUserCohorts: () => ipcRenderer.invoke('analytics:getUserCohorts'),
+    getFeatureAdoption: () => ipcRenderer.invoke('analytics:getFeatureAdoption'),
+    getRecentEvents: (limit) => ipcRenderer.invoke('analytics:getRecentEvents', limit),
+    getVoiceMetrics: (timeRange) => ipcRenderer.invoke('analytics:getVoiceMetrics', timeRange),
+    getSystemHealth: () => ipcRenderer.invoke('analytics:getSystemHealth'),
+    getActiveAlerts: () => ipcRenderer.invoke('analytics:getActiveAlerts'),
+    getLearnXMetrics: (timeRange) => ipcRenderer.invoke('analytics:getLearnXMetrics', timeRange),
+    
+    // Cache management
+    refreshCache: () => ipcRenderer.invoke('analytics:refreshCache'),
+    
+    // Consumer status
+    getConsumerStatus: () => ipcRenderer.invoke('analytics:getConsumerStatus'),
+    
+    // Real-time event subscription
+    subscribeToEvents: (callback) => {
+      // Create a wrapper to handle IPC events
+      const ipcCallback = (event, data) => callback(data);
+      ipcRenderer.on('analytics:event-processed', ipcCallback);
+      
+      // Return unsubscribe function
+      return () => {
+        ipcRenderer.removeListener('analytics:event-processed', ipcCallback);
+      };
+    },
+    
+    // Business Intelligence
+    getBusinessKPIs: (timeRange) => ipcRenderer.invoke('analytics:getBusinessKPIs', timeRange),
+    getConversionFunnel: (timeRange) => ipcRenderer.invoke('analytics:getConversionFunnel', timeRange),
+    getLearningAnalytics: (timeRange) => ipcRenderer.invoke('analytics:getLearningAnalytics', timeRange),
+    getActionableInsights: (timeRange) => ipcRenderer.invoke('analytics:getActionableInsights', timeRange),
+    
+    // Aggregation & Reporting
+    getDAUWAUMAU: (startDate, endDate) => ipcRenderer.invoke('analytics:getDAUWAUMAU', startDate, endDate),
+    getRetentionCohorts: (timeRange) => ipcRenderer.invoke('analytics:getRetentionCohorts', timeRange),
+    generateReport: (options) => ipcRenderer.invoke('analytics:generateReport', options),
+    
+    // Real-time listeners (legacy)
+    onEventProcessed: (callback) => ipcRenderer.on('analytics:event-processed', callback),
+    removeOnEventProcessed: (callback) => ipcRenderer.removeListener('analytics:event-processed', callback),
+    onMetricsUpdated: (callback) => ipcRenderer.on('analytics:metrics-updated', callback),
+    removeOnMetricsUpdated: (callback) => ipcRenderer.removeListener('analytics:metrics-updated', callback),
+    onAlertTriggered: (callback) => ipcRenderer.on('analytics:alert-triggered', callback),
+    removeOnAlertTriggered: (callback) => ipcRenderer.removeListener('analytics:alert-triggered', callback)
   }
 });
